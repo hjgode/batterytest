@@ -1,0 +1,496 @@
+using HSM.Embedded.Utility;
+using Microsoft.WindowsCE.Forms;
+using System;
+using System.Drawing;
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace HSM.Embedded.Camera
+{
+    /// <summary>
+    /// </summary>
+    public class CameraAssembly : IDisposable
+    {
+        private const int WM_ASYNC_CAPTURE_COMPLETED = 2623;
+
+        private AsyncMessageWindow oAsyncMessageWindow;
+
+        private CameraAssembly.CameraEventArgs CameraData;
+
+        /// <summary>
+        /// Default Constructor.
+        /// </summary>
+        public CameraAssembly()
+        {
+            try
+            {
+                if (Environment.OSVersion.Platform == PlatformID.WinCE)
+                {
+                    this.oAsyncMessageWindow = new AsyncMessageWindow();
+                    this.oAsyncMessageWindow.MessageReceived += new AsyncMessageWindow.MessageReceivedEventHandler(this.oAsyncMessageWindow_MessageReceived);
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// This method initializes the camera functionality and sets the camera properties
+        /// to its default values.  It executes asynchronously.
+        /// </summary>
+        /// <param name="handle">The window handle for displaying the preview image</param>
+        /// <param name="file">The name of the file containing camera profiles. Set to null if not used.</param>
+        /// <param name="profile">The profile to use for capturing  images. Set to null if not used.</param>
+        public void Connect(IntPtr handle, string file, string profile)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camInit(handle, file, profile);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+            try
+            {
+                CameraOps.camSetEventsWindow(this.oAsyncMessageWindow.Hwnd);
+            }
+            catch (Exception exception)
+            {
+            }
+        }
+
+        /// <summary>
+        /// This method selects and initializes the specified imaging sensor with the properties
+        /// in the designated profile.  It executes asynchronously.
+        /// </summary>
+        /// <param name="type">The imaging sensor to be used</param>
+        /// <param name="handle">The window handle for displaying the preview image</param>
+        /// <param name="file">The name of the file containing the profiles. Set to null if not used.</param>
+        /// <param name="profile">The profile to use for capturing  images. Set to null if not used.</param>
+        public void Connect(SensorType type, IntPtr handle, string file, string profile)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camSelect(handle, file, profile, (int)type);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+            try
+            {
+                CameraOps.camSetEventsWindow(this.oAsyncMessageWindow.Hwnd);
+            }
+            catch (Exception exception)
+            {
+            }
+        }
+
+        /// <summary>
+        /// This method will disconnect from the driver.
+        /// </summary>
+        public void Disconnect()
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camShutDown();
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// Releases all of the CameraAssembly's resources.
+        /// </summary>
+        public void Dispose()
+        {
+            try
+            {
+                this.Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="Disposing"></param>
+        protected virtual void Dispose(bool Disposing)
+        {
+            try
+            {
+                if (Disposing)
+                {
+                    this.oAsyncMessageWindow.Dispose();
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Finalizer
+        /// </summary>
+        protected override void Finalize()
+        {
+            try
+            {
+                this.Dispose(false);
+            }
+            finally
+            {
+                this.Finalize();
+            }
+        }
+
+        /// <summary>
+        /// Get the ID of the camera
+        /// This method will return the ID of the camera.
+        /// </summary>
+        /// <param name="count"></param>
+        public void GetCameraID(out long count)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camGetCameraID(out count);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// Get the state of the camera
+        /// This method will return the state of the camera.
+        /// </summary>
+        /// <param name="state">The current state</param>
+        public void GetCameraState(out State state)
+        {
+            int num = 0;
+            CameraAPIResult cameraAPIResult = CameraOps.camGetState(out num);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+            state = (State)num;
+        }
+
+        /// <summary>
+        /// Get the revision string ID of the installed camera
+        /// </summary>
+        /// <param name="sRev"></param>
+        private void GetDLLRevision(out StringBuilder sRev)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camGetDllRevision(out sRev);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// This method is used to return the current value of the specified camera property.
+        /// </summary>
+        /// <param name="prop">Camera property</param>
+        /// <param name="val">Value to be returned</param>
+        /// <param name="flags">Property type flag</param>
+        public void GetProperty(CameraProperty prop, out int val, out int flags)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camGetProperty(prop, out val, out flags);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// This method is used to return the range of values for the specified property.
+        /// </summary>
+        /// <param name="prop">The property </param>
+        /// <param name="min">The minimum valid value for the property</param>
+        /// <param name="max">The maximum valid value for the property</param>
+        /// <param name="step">The step resolution for the property</param>
+        /// <param name="def">The default value for the property</param>
+        /// <param name="flags">The flag indicating maual or automatic control of the parameter</param>
+        public void GetPropertyRange(CameraProperty prop, out int min, out int max, out int step, out int def, out int flags)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camGetPropertyRange(prop, out min, out max, out step, out def, out flags);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// The method is used to retrieve the number of image resolutions
+        /// supported by the camera.
+        /// </summary>
+        /// <param name="count">Number of supported resolutions</param>
+        public void GetResolutionCount(out long count)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camGetResolutionCount(out count);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// This method is used to retrieve the height and width,
+        /// in pixels, of the still image for the specified resolution index.
+        /// </summary>
+        /// <param name="height">Height of the image</param>
+        /// <param name="width">Width of the image</param>
+        /// <param name="resolutionIndex">Index of desired resolution</param>
+        public void GetResolutionDimensions(out int height, out int width, int resolutionIndex)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camGetResolutionDimensions(out height, out width, resolutionIndex);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// This method gets the imaging sensor type currently selected.
+        /// </summary>
+        /// <param name="sensor">The imaging sensor type in use</param>
+        public void GetSelectedSensor(out int sensor)
+        {
+            try
+            {
+                CameraOps.camGetSelectedType(out sensor);
+            }
+            catch
+            {
+                throw new CameraException(CameraAPIResult.ErrGeneralFault);
+            }
+        }
+
+        private void oAsyncMessageWindow_MessageReceived(object sender, AsyncMessageWindow.MessageReceivedEventArgs e)
+        {
+            try
+            {
+                if (e.ReceivedMessage.Msg == 2623)
+                {
+                    this.CameraData = new CameraAssembly.CameraEventArgs(CameraAssembly.CameraTaskCodes.ImageCaptureComplete);
+                    this.OnCameraEvent(this.CameraData);
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Event method used to raise the Camera event by invoking the delegate
+        /// </summary>
+        /// <param name="e">CameraEventArgs class</param>
+        protected virtual void OnCameraEvent(CameraAssembly.CameraEventArgs e)
+        {
+            if (this.CameraEvent != null)
+            {
+                this.CameraEvent(this, e);
+            }
+        }
+
+        /// <summary>
+        /// This method sets the callback method to process preview images.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RegisterPreviewCallback(CameraAssembly.PreviewCallback callback)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camRegisterPreviewCallback(Marshal.GetFunctionPointerForDelegate(callback));
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// This method sets the callback method to process still images.
+        /// </summary>
+        /// <param name="callback"></param>
+        public void RegisterStillImageCallback(CameraAssembly.StillImageCallback callback)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camRegisterStillImageCallback(Marshal.GetFunctionPointerForDelegate(callback));
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// This method sets the window to handle events.
+        /// </summary>
+        /// <param name="handle"></param>
+        public void SetEventsWindow(IntPtr handle)
+        {
+            CameraOps.camSetEventsWindow(handle);
+        }
+
+        /// <summary>
+        /// This method is used to set the value of the specified camera property.
+        /// </summary>
+        /// <param name="prop">Camera property</param>
+        /// <param name="val">Values</param>
+        /// <param name="flags">Property type flag</param>
+        public void SetProperty(CameraProperty prop, int val, PropertyMode flags)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camSetProperty(prop, val, flags);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// This method is used to set the still image resolution.
+        /// </summary>
+        /// <param name="resolutionIndex">Resolution index</param>
+        public void SetResolution(uint resolutionIndex)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camSetResolution(resolutionIndex);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// Snap a picture at the configured resolution and save it to the
+        /// desired file name. The name of the file must include
+        /// a supported file type extension, i.e .BMP, .JPG, .PNG, or .TIF. The JpgQuality 
+        /// value applies only to the JPG and TIF formats.
+        /// The function executes synchronously.
+        /// </summary>
+        /// <param name="filename">The name of the file to store the picture. If null is
+        /// specified, no image will be saved.</param>
+        /// <param name="level">For JPG images the desired quality level: low, med, high</param>
+        public void SnapPicture(string filename, JPGQuality level)
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camSnapPicture(filename, (int)level);
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        public void SnapPictureWithText(string filename, JPGQuality level, string caption, TextOverlayLocation location, Color color, Font font)
+        {
+            int r = color.R | color.G << 8 | color.B << 16 | color.A << 24;
+            CameraAPIResult cameraAPIResult = CameraOps.camSnapPictureWithText(filename, (int)level, caption, caption.Length, location, r, font.ToHfont());
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// This method will start the camera, displaying the preview image.  The camera
+        /// must be previewing images to snap a picture.
+        /// </summary>
+        public void StartPreview()
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camStartPreview();
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// This method will terminate the previewing of images.
+        /// </summary>
+        public void StopPreview()
+        {
+            CameraAPIResult cameraAPIResult = CameraOps.camStopPreview();
+            if (cameraAPIResult != CameraAPIResult.Success)
+            {
+                throw new CameraException(cameraAPIResult);
+            }
+        }
+
+        /// <summary>
+        /// Public instance of the Camera Event.
+        /// </summary>
+        public event CameraAssembly.CameraEventHandler CameraEvent;
+
+        /// <summary>
+        /// The CameraEventArgs class defines the data being passed to the camera event.
+        /// </summary>
+        public class CameraEventArgs : EventArgs
+        {
+            private readonly CameraAssembly.CameraTaskCodes m_TaskCode;
+
+            public CameraAssembly.CameraTaskCodes TaskCode
+            {
+                get
+                {
+                    return this.m_TaskCode;
+                }
+            }
+
+            internal CameraEventArgs(CameraAssembly.CameraTaskCodes TaskCode)
+            {
+                this.m_TaskCode = TaskCode;
+            }
+        }
+
+        /// <summary>
+        /// Camera event delegate that handles the CameraEventArgs.
+        /// </summary>
+        /// <param name="sender">Sender source.</param>
+        /// <param name="e">CameraEventArgs class.</param>
+        public delegate void CameraEventHandler(object sender, CameraAssembly.CameraEventArgs e);
+
+        /// <summary>
+        /// Codes used to identify the completion of an asynchronous task
+        /// </summary>
+        public enum CameraTaskCodes
+        {
+            ImageCaptureComplete
+        }
+
+        /// <summary>
+        /// Delegate for preview callback.
+        /// </summary>
+        /// <param name="pData">pointer to frame data</param>
+        /// <param name="len">length of frame data in bytes</param>
+        /// <param name="height">height of image in pixels</param>
+        /// <param name="width">width of image in pixels</param>
+        /// <param name="stride">number of bytes in each row, including extra bytes to extend the row to a multiple of 4 bytes</param>
+        public delegate void PreviewCallback(IntPtr pData, long len, int height, int width, int stride);
+
+        /// <summary>
+        /// Color class using red/green/blue components
+        /// </summary>
+        public class RGBColor
+        {
+            internal byte r;
+
+            internal byte g;
+
+            internal byte b;
+
+            public RGBColor(byte red, byte green, byte blue)
+            {
+                this.r = red;
+                this.g = green;
+                this.b = blue;
+            }
+        }
+
+        /// <summary>
+        /// Delegate for still image callback.
+        /// </summary>
+        /// <param name="pData">pointer to frame data</param>
+        /// <param name="len">length of frame data in bytes</param>
+        /// <param name="height">height of image in pixels</param>
+        /// <param name="width">width of image in pixels</param>
+        /// <param name="stride">number of bytes in each row, including extra bytes to extend the row to a multiple of 4 bytes</param>
+        public delegate void StillImageCallback(IntPtr pData, long len, int height, int width, int stride);
+    }
+}
+
+ Expand All Members 

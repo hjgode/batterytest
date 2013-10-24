@@ -1,0 +1,1581 @@
+using HSM.Embedded.Utility;
+using Microsoft.WindowsCE.Forms;
+using System;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Globalization;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace HSM.Embedded.Decoding
+{
+    /// <summary>
+    /// The DecodeAssembly is the entry point for the DecodeAssembly.  This class exposes all decode functionality.
+    /// </summary>
+    public class DecodeAssembly : IDisposable
+    {
+        private const int WM_ASYNC_DECODE_COMPLETED = 14055;
+
+        internal static Enum[] SymbologyEnumMap;
+
+        private AsyncMessageWindow oAsyncMessageWindow;
+
+        private DecodeAssembly.DecodeTypes m_DecodeType;
+
+        private int m_ScanTimeout = 5000;
+
+        private int m_vKey;
+
+        private bool m_ContinueMultiDecode;
+
+        private DecodeAssembly.ResultCodes m_lastMultiDecodeResult = DecodeAssembly.ResultCodes.Initialize;
+
+        private DecodeAssembly.DecodeEventArgs DecodeData;
+
+        private DecodeAssembly.MultiDecodeEventArgs MultiDecodeData;
+
+        private DecodeAssembly.IqImageTypes m_IqImageType;
+
+        private int m_IqImageTimeout;
+
+        private byte[] m_IqImageRawData;
+
+        private DecodeAssembly.IqImageEventArgs IqImageData;
+
+        private bool ContinueMultiDecode
+        {
+            get
+            {
+                return this.m_ContinueMultiDecode;
+            }
+            set
+            {
+                this.m_ContinueMultiDecode = value;
+            }
+        }
+
+        /// <summary>
+        /// Returns The Raw IQ Image Data
+        /// </summary>
+        public byte[] IqImageRawData
+        {
+            get
+            {
+                return this.m_IqImageRawData;
+            }
+        }
+
+        private DecodeAssembly.ResultCodes LastMultiDecodeResult
+        {
+            get
+            {
+                return this.m_lastMultiDecodeResult;
+            }
+            set
+            {
+                this.m_lastMultiDecodeResult = value;
+            }
+        }
+
+        /// <summary>
+        /// Get/Set The maximum time in msec allowed for a decode attempt.
+        /// </summary>
+        public int ScanTimeout
+        {
+            get
+            {
+                return this.m_ScanTimeout;
+            }
+            set
+            {
+                this.m_ScanTimeout = value;
+            }
+        }
+
+        private int VirtualKey
+        {
+            get
+            {
+                return this.m_vKey;
+            }
+            set
+            {
+                this.m_vKey = value;
+            }
+        }
+
+        static DecodeAssembly()
+        {
+            Enum[] enumArray = new Enum[] { DecodeAssembly.MatrixCodes.AztecEnabled, DecodeAssembly.LinearCodes.CodabarEnabled, DecodeAssembly.LinearCodes.Code11Enabled, DecodeAssembly.LinearCodes.Code128Enabled, DecodeAssembly.LinearCodes.Code39Enabled, DecodeAssembly.UnsupportedCodes.Code49, DecodeAssembly.LinearCodes.Code93Enabled, DecodeAssembly.MatrixCodes.CompositeEnabled, DecodeAssembly.MatrixCodes.DataMatrixEnabled, DecodeAssembly.RetailCodes.EAN_8_Enabled, DecodeAssembly.RetailCodes.EAN_13_Enabled, DecodeAssembly.LinearCodes.Int25Enabled, DecodeAssembly.MatrixCodes.MaxicodeEnabled, DecodeAssembly.MatrixCodes.MicroPDFEnabled, DecodeAssembly.OCRSetting.Mode, DecodeAssembly.MatrixCodes.PDF417Enabled, DecodeAssembly.PostalCodes.Postnet, DecodeAssembly.MatrixCodes.QRCodeEnabled, DecodeAssembly.LinearCodes.RSS_14EEnabled, DecodeAssembly.RetailCodes.UPC_A_Enabled, DecodeAssembly.RetailCodes.UPC_E0_Enabled, DecodeAssembly.RetailCodes.UPC_E1_Enabled, DecodeAssembly.LinearCodes.ISBT128Enabled, DecodeAssembly.PostalCodes.BritishPost, DecodeAssembly.PostalCodes.CanadianPost, DecodeAssembly.PostalCodes.AustralianPost, DecodeAssembly.LinearCodes.IATA25Enabled, DecodeAssembly.MatrixCodes.CodaBlock_F_Enabled, DecodeAssembly.PostalCodes.JapanesePost, DecodeAssembly.PostalCodes.PlanetCode, DecodeAssembly.PostalCodes.KIXPost, DecodeAssembly.LinearCodes.MSIEnabled, DecodeAssembly.LinearCodes.TLC39Enabled, DecodeAssembly.LinearCodes.TriopticEnabled, DecodeAssembly.LinearCodes.Code39Base32Enabled, DecodeAssembly.LinearCodes.Standard25Enabled, DecodeAssembly.LinearCodes.Matrix25Enabled, DecodeAssembly.UnsupportedCodes.Code49, DecodeAssembly.LinearCodes.ChinaPostEnabled, DecodeAssembly.LinearCodes.KoreanPostEnabled, DecodeAssembly.LinearCodes.TelepenEnabled, DecodeAssembly.UnsupportedCodes.Code49, DecodeAssembly.UnsupportedCodes.Code49, DecodeAssembly.RetailCodes.CouponCodeEnabled, DecodeAssembly.PostalCodes.USPS_4_State, DecodeAssembly.PostalCodes.UPU_4_State, DecodeAssembly.UnsupportedCodes.Code49, DecodeAssembly.LinearCodes.GS1_128Enabled, DecodeAssembly.MatrixCodes.HanXinEnabled, DecodeAssembly.UnsupportedCodes.Code49, DecodeAssembly.PostalCodes.NoPostals, DecodeAssembly.PostalCodes.US_Postals };
+            DecodeAssembly.SymbologyEnumMap = enumArray;
+        }
+
+        /// <summary>
+        /// Default Constructor.
+        /// </summary>
+        public DecodeAssembly()
+        {
+            try
+            {
+                if (Environment.OSVersion.Platform == PlatformID.WinCE)
+                {
+                    this.oAsyncMessageWindow = new AsyncMessageWindow();
+                    this.oAsyncMessageWindow.MessageReceived += new AsyncMessageWindow.MessageReceivedEventHandler(this.oAsyncMessageWindow_MessageReceived);
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Cancels the current asynchronous IQ Image operation.
+        /// </summary>
+        public void CancelCaptureIqImage()
+        {
+            try
+            {
+                this.m_DecodeType = DecodeAssembly.DecodeTypes.Cancel;
+                this.m_IqImageTimeout = 0;
+                DecodeAssembly.LastDecodeResult(DecodeAssembly.CancelDecode());
+                this.IqImageData = new DecodeAssembly.IqImageEventArgs(null, new DecodeException(DecodeAssembly.ResultCodes.Cancel), DecodeAssembly.ResultCodes.Cancel, string.Empty, null, string.Empty, string.Empty, string.Empty, 0, null);
+                this.OnIqImageEvent(this.IqImageData);
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decCancelDecode", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes CancelDecode();
+
+        /// <summary>
+        /// Cancels the current ScanMultipleBarcodes operation.
+        /// </summary>
+        public void CancelMultiDecode()
+        {
+            try
+            {
+                this.ContinueMultiDecode = false;
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Cancels the current asynchronous decode operation.
+        /// </summary>
+        public void CancelScanBarcode()
+        {
+            try
+            {
+                this.m_DecodeType = DecodeAssembly.DecodeTypes.Cancel;
+                DecodeAssembly.LastDecodeResult(DecodeAssembly.CancelDecode());
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Starts an asynchronous IQ Image Operation.
+        /// </summary>
+        /// <param name="IqImageType">The type of capture to execute.</param>
+        public void CaptureIqImage(DecodeAssembly.IqImageTypes IqImageType)
+        {
+            try
+            {
+                this.m_IqImageTimeout = Environment.TickCount + this.m_ScanTimeout;
+                this.m_IqImageType = IqImageType;
+                if (IqImageType != DecodeAssembly.IqImageTypes.BarcodeAndImage)
+                {
+                    this.IqImage();
+                }
+                else
+                {
+                    this.InitiateAsyncDecode(DecodeAssembly.DecodeTypes.IqImage);
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        private void ClearIqImageSettings()
+        {
+            try
+            {
+                this.m_IqImageTimeout = 0;
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        private void CompleteAsyncDecode()
+        {
+            try
+            {
+                try
+                {
+                    byte[] numArray = new byte[4000];
+                    byte num = 0;
+                    byte num1 = 0;
+                    byte num2 = 0;
+                    int num3 = 0;
+                    DecodeAssembly.ResultCodes int32Property = DecodeAssembly.ResultCodes.NoDecode;
+                    int32Property = DecodeAssembly.GetInt32Property(402747393, ref num3);
+                    int32Property = DecodeAssembly.GetByteProperty(402747394, ref num);
+                    int32Property = DecodeAssembly.GetByteProperty(402747395, ref num1);
+                    int32Property = DecodeAssembly.GetByteProperty(402747396, ref num2);
+                    int32Property = DecodeAssembly.GetByteArrayProperty(402747397, numArray);
+                    byte[] numArray1 = new byte[num3];
+                    Array.Copy(numArray, 0, numArray1, 0, num3);
+                    if (int32Property != DecodeAssembly.ResultCodes.Success && int32Property != DecodeAssembly.ResultCodes.DecodeTfConfigSuccess && int32Property != DecodeAssembly.ResultCodes.DecodeTfConfigFailure)
+                    {
+                        this.DecodeData = new DecodeAssembly.DecodeEventArgs(null, new DecodeException(int32Property), int32Property, string.Empty, null, string.Empty, string.Empty, string.Empty, 0);
+                    }
+                    else if (this.DecodeEvent != null)
+                    {
+                        Encoding encoding = Encoding.GetEncoding(CultureInfo.CurrentUICulture.TextInfo.ANSICodePage);
+                        string str = encoding.GetString(numArray, 0, num3);
+                        byte[] numArray2 = new byte[] { num };
+                        string str1 = encoding.GetString(numArray2, 0, 1);
+                        byte[] numArray3 = new byte[] { num1 };
+                        string str2 = encoding.GetString(numArray3, 0, 1);
+                        byte[] numArray4 = new byte[] { num2 };
+                        this.DecodeData = new DecodeAssembly.DecodeEventArgs(null, null, int32Property, str, numArray1, str1, str2, encoding.GetString(numArray4, 0, 1), num3);
+                    }
+                }
+                catch (Exception exception1)
+                {
+                    Exception exception = exception1;
+                    this.DecodeData = new DecodeAssembly.DecodeEventArgs(exception, null, DecodeAssembly.ResultCodes.Initialize, string.Empty, null, string.Empty, string.Empty, string.Empty, 0);
+                }
+            }
+            finally
+            {
+                this.OnDecodeEvent(this.DecodeData);
+            }
+        }
+
+        /// <summary>
+        /// Connect to the Decoder engine
+        /// </summary>
+        public void Connect()
+        {
+            try
+            {
+                DecodeAssembly.LastDecodeResult(DecodeAssembly.decConnect());
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        private int ContinueMultiDecodeCallback()
+        {
+            bool flag;
+            if (this.VirtualKey != 0 && this.ContinueMultiDecode)
+            {
+                flag = (DecodeAssembly.sysGetAsyncKeyState(this.VirtualKey) < 0 ? true : false);
+                this.ContinueMultiDecode = flag;
+            }
+            if (!this.ContinueMultiDecode)
+            {
+                return 0;
+            }
+            return 1;
+        }
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes decConnect();
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes decDecode([In] int TimeOut, [In] IntPtr pKeepGoing, [In] bool bAsync, [In] IntPtr Hwnd, [In] IntPtr HdecEvent);
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes decDisconnect();
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes decSetDefaults();
+
+        /// <summary>
+        /// Disconnect from the Decoder engine
+        /// </summary>
+        public void Disconnect()
+        {
+            try
+            {
+                DecodeAssembly.LastDecodeResult(DecodeAssembly.decDisconnect());
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Releases all of the DecodeAssemblies resources.
+        /// </summary>
+        public void Dispose()
+        {
+            try
+            {
+                this.Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="Disposing"></param>
+        protected virtual void Dispose(bool Disposing)
+        {
+            try
+            {
+                if (Disposing)
+                {
+                    DecodeAssembly.LastDecodeResult(DecodeAssembly.decDisconnect());
+                    this.oAsyncMessageWindow.Dispose();
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Finalizer
+        /// </summary>
+        protected override void Finalize()
+        {
+            try
+            {
+                this.Dispose(false);
+            }
+            finally
+            {
+                this.Finalize();
+            }
+        }
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decGetProperty", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes GetByteArrayProperty([In] int Property, [Out] byte[] Message);
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decGetProperty", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes GetByteProperty([In] int Property, [In][Out] ref byte Byte);
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decGetProperty", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes GetCharArrayProperty([In] int Property, [Out] char[] Data);
+
+        /// <summary>
+        /// Gets a decoder property value
+        /// </summary>
+        /// <param name="Property">One of the decoder library properties</param>
+        public int GetDecoderProperty(Enum Property)
+        {
+            int num;
+            int num1 = 0;
+            try
+            {
+                int num2 = Convert.ToInt32(Property);
+                DecodeAssembly.GetInt32Property(num2, ref num1);
+                num = num1;
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+            return num;
+        }
+
+        /// <summary>
+        /// Gets a decoder string property, i.e. a revision property
+        /// </summary>
+        /// <param name="Property">One of the decoder library properties</param>
+        public string GetDecoderStringProperty(Enum Property)
+        {
+            string str;
+            char[] chrArray = new char[512];
+            try
+            {
+                DecodeAssembly.GetCharArrayProperty(Convert.ToInt32(Property), chrArray);
+                str = new string(chrArray);
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+            return str;
+        }
+
+        private Image GetImageFromBuffer(int Width, int Height, byte[] ImageData)
+        {
+            Image image;
+            try
+            {
+                Bitmap bitmap = new Bitmap(Width, Height, PixelFormat.Format24bppRgb);
+                BitmapData bitmapDatum = bitmap.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
+                int stride = bitmapDatum.Stride;
+                int num = 0;
+                int num1 = 0;
+                byte[] imageData = new byte[stride * Height];
+                for (int i = 0; i < Height; i++)
+                {
+                    for (int j = 0; j < Width; j++)
+                    {
+                        int num2 = num1;
+                        num1 = num2 + 1;
+                        imageData[num2] = ImageData[num];
+                        int num3 = num1;
+                        num1 = num3 + 1;
+                        imageData[num3] = ImageData[num];
+                        int num4 = num1;
+                        num1 = num4 + 1;
+                        imageData[num4] = ImageData[num];
+                        num++;
+                    }
+                }
+                Marshal.Copy(imageData, 0, bitmapDatum.Scan0, num1);
+                bitmap.UnlockBits(bitmapDatum);
+                image = bitmap;
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+            return image;
+        }
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decGetProperty", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes GetInt32Property([In] int Property, [In][Out] ref int Value);
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decGetIQImage", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes GetIQImage([Out] byte[] ImageBuffer, [In][Out] ref int Size);
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decGetLastImage", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes GetLastImage([Out] byte[] ImageBuffer, [In][Out] ref int Columns, [In][Out] ref int Rows);
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decGetProperty", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes GetProperty([In] int Property, [In][Out] ref int Value);
+
+        public string GetStringFromOCRSettingModeEnum(int f_OCRSettingMode)
+        {
+            string str = "";
+            switch (f_OCRSettingMode)
+            {
+                case 0:
+                {
+                    str = "OCR Enable Mode: Off";
+                    break;
+                }
+                case 1:
+                {
+                    str = "OCR Enable Mode: Normal Video";
+                    break;
+                }
+                case 2:
+                {
+                    str = "OCR Enable Mode: Inverse Video";
+                    break;
+                }
+                case 3:
+                {
+                    str = "OCR Enable Mode: Both";
+                    break;
+                }
+                default:
+                {
+                    str = "";
+                    break;
+                }
+            }
+            return str;
+        }
+
+        public string GetStringFromOCRTemplatesEnum(int f_OCRTemplate)
+        {
+            string str = "";
+            int fOCRTemplate = f_OCRTemplate;
+            switch (fOCRTemplate)
+            {
+                case 1:
+                {
+                    str = "Active OCR Template: User Template";
+                    break;
+                }
+                case 2:
+                {
+                    str = "Active OCR Template: Passport Template";
+                    break;
+                }
+                case 3:
+                {
+                    str = "";
+                    break;
+                }
+                case 4:
+                {
+                    str = "Active OCR Template: ISBN Template";
+                    break;
+                }
+                default:
+                {
+                    if (fOCRTemplate == 8)
+                    {
+                        str = "Active OCR Template: PriceField Template";
+                        break;
+                    }
+                    else if (fOCRTemplate == 16)
+                    {
+                        str = "Active OCR Template: MicrE13B Template";
+                        break;
+                    }
+                    else
+                    {
+                        goto case 3;
+                    }
+                }
+            }
+            return str;
+        }
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decInitDecoder", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes InitDecoder([In] int Width, [In] int Height);
+
+        private void InitiateAsyncDecode(DecodeAssembly.DecodeTypes DecodeType)
+        {
+            try
+            {
+                if (this.GetDecoderProperty(DecodeAssembly.DecodeSetting.ScanInProgress) == 0)
+                {
+                    this.m_DecodeType = DecodeType;
+                    DecodeAssembly.LastDecodeResult(DecodeAssembly.decDecode(this.ScanTimeout, IntPtr.Zero, true, this.oAsyncMessageWindow.Hwnd, IntPtr.Zero));
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        private void IqImage()
+        {
+            try
+            {
+                try
+                {
+                    byte[] numArray = new byte[4000];
+                    byte num = 0;
+                    byte num1 = 0;
+                    byte num2 = 0;
+                    int num3 = 0;
+                    int num4 = 0;
+                    int num5 = 0;
+                    int num6 = 0;
+                    DecodeAssembly.ResultCodes int32Property = DecodeAssembly.ResultCodes.NoImage;
+                    if (this.m_IqImageType == DecodeAssembly.IqImageTypes.BarcodeAndImage)
+                    {
+                        int32Property = DecodeAssembly.GetInt32Property(402747393, ref num3);
+                        int32Property = DecodeAssembly.GetByteProperty(402747394, ref num);
+                        int32Property = DecodeAssembly.GetByteProperty(402747395, ref num1);
+                        int32Property = DecodeAssembly.GetByteProperty(402747396, ref num2);
+                        int32Property = DecodeAssembly.GetByteArrayProperty(402747397, numArray);
+                    }
+                    if (int32Property == DecodeAssembly.ResultCodes.Success || this.m_IqImageType == DecodeAssembly.IqImageTypes.ImageOnly)
+                    {
+                        Image imageFromBuffer = null;
+                        int num7 = 0;
+                        DecodeAssembly.GetInt32Property(402739203, ref num4);
+                        DecodeAssembly.GetInt32Property(402739204, ref num5);
+                        DecodeAssembly.GetInt32Property(402739205, ref num6);
+                        int num8 = num4 * num6;
+                        int num9 = num5 * num6;
+                        num8 = num8 / 4 * 4;
+                        this.m_IqImageRawData = new byte[num8 * num9];
+                        int32Property = DecodeAssembly.GetIQImage(this.m_IqImageRawData, ref num7);
+                        if (int32Property == DecodeAssembly.ResultCodes.Success)
+                        {
+                            if (this.IqImageEvent != null)
+                            {
+                                if (num7 > 0)
+                                {
+                                    imageFromBuffer = this.GetImageFromBuffer(num8, num9, this.m_IqImageRawData);
+                                }
+                                Encoding encoding = Encoding.GetEncoding(CultureInfo.CurrentUICulture.TextInfo.ANSICodePage);
+                                byte[] numArray1 = new byte[num3];
+                                Array.Copy(numArray, 0, numArray1, 0, num3);
+                                string str = encoding.GetString(numArray, 0, num3);
+                                byte[] numArray2 = new byte[] { num };
+                                string str1 = encoding.GetString(numArray2, 0, 1);
+                                byte[] numArray3 = new byte[] { num1 };
+                                string str2 = encoding.GetString(numArray3, 0, 1);
+                                byte[] numArray4 = new byte[] { num2 };
+                                this.IqImageData = new DecodeAssembly.IqImageEventArgs(null, null, int32Property, str, numArray1, str1, str2, encoding.GetString(numArray4, 0, 1), num3, imageFromBuffer);
+                            }
+                            this.ClearIqImageSettings();
+                        }
+                        else if (int32Property != DecodeAssembly.ResultCodes.BadRegion)
+                        {
+                            this.IqImageData = new DecodeAssembly.IqImageEventArgs(null, new DecodeException(int32Property), int32Property, string.Empty, null, string.Empty, string.Empty, string.Empty, 0, null);
+                        }
+                        else if (Environment.TickCount > this.m_IqImageTimeout)
+                        {
+                            this.ClearIqImageSettings();
+                            this.IqImageData = new DecodeAssembly.IqImageEventArgs(null, new DecodeException(DecodeAssembly.ResultCodes.NoImage), DecodeAssembly.ResultCodes.NoImage, string.Empty, null, string.Empty, string.Empty, string.Empty, 0, null);
+                        }
+                        else if (this.m_IqImageType != DecodeAssembly.IqImageTypes.BarcodeAndImage)
+                        {
+                            this.IqImageData = new DecodeAssembly.IqImageEventArgs(null, new DecodeException(int32Property), int32Property, string.Empty, null, string.Empty, string.Empty, string.Empty, 0, null);
+                        }
+                        else
+                        {
+                            this.InitiateAsyncDecode(DecodeAssembly.DecodeTypes.IqImage);
+                            this.IqImageData = null;
+                        }
+                    }
+                    else
+                    {
+                        this.IqImageData = new DecodeAssembly.IqImageEventArgs(null, new DecodeException(int32Property), int32Property, string.Empty, null, string.Empty, string.Empty, string.Empty, 0, null);
+                    }
+                }
+                catch (Exception exception1)
+                {
+                    Exception exception = exception1;
+                    this.IqImageData = new DecodeAssembly.IqImageEventArgs(exception, null, DecodeAssembly.ResultCodes.Initialize, string.Empty, null, string.Empty, string.Empty, string.Empty, 0, null);
+                }
+            }
+            finally
+            {
+                if (this.IqImageData != null)
+                {
+                    this.OnIqImageEvent(this.IqImageData);
+                }
+            }
+        }
+
+        public static void LastDecodeResult(DecodeAssembly.ResultCodes RC)
+        {
+            try
+            {
+                if (RC != DecodeAssembly.ResultCodes.Success)
+                {
+                    throw new DecodeException(RC);
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        private int MultiDecodeCallback(ref DecodeAssembly.DecodeMsg_t message)
+        {
+            try
+            {
+                try
+                {
+                    if (this.LastMultiDecodeResult != DecodeAssembly.ResultCodes.Success)
+                    {
+                        this.MultiDecodeData = new DecodeAssembly.MultiDecodeEventArgs(null, new DecodeException(this.LastMultiDecodeResult), this.LastMultiDecodeResult, string.Empty, null, string.Empty, string.Empty, string.Empty, 0);
+                    }
+                    if (message.Length != 0)
+                    {
+                        byte[] numArray = new byte[message.Length];
+                        if (this.MultiDecodeEvent != null)
+                        {
+                            Marshal.Copy(message.Message, numArray, 0, message.Length);
+                            Encoding encoding = Encoding.GetEncoding(CultureInfo.CurrentUICulture.TextInfo.ANSICodePage);
+                            byte[] numArray1 = new byte[message.Length];
+                            Array.Copy(numArray, 0, numArray1, 0, message.Length);
+                            DecodeAssembly.ResultCodes lastMultiDecodeResult = this.LastMultiDecodeResult;
+                            string str = encoding.GetString(numArray, 0, message.Length);
+                            byte[] codeID = new byte[] { message.CodeID };
+                            string str1 = encoding.GetString(codeID, 0, 1);
+                            byte[] symLetter = new byte[] { message.SymLetter };
+                            string str2 = encoding.GetString(symLetter, 0, 1);
+                            byte[] symModifier = new byte[] { message.SymModifier };
+                            this.MultiDecodeData = new DecodeAssembly.MultiDecodeEventArgs(null, null, lastMultiDecodeResult, str, numArray1, str1, str2, encoding.GetString(symModifier, 0, 1), message.Length);
+                        }
+                    }
+                }
+                catch (Exception exception)
+                {
+                    throw;
+                }
+            }
+            finally
+            {
+                if (this.ContinueMultiDecode)
+                {
+                    this.OnMultiDecodeEvent(this.MultiDecodeData);
+                }
+            }
+            return 1;
+        }
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decMultipleDecode", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes MultipleDecode(int Timeout, DecodeAssembly.MultiDecodeDelegate MultiDecodePtr, DecodeAssembly.ContinueMultiDecodeDelegate ContinueMultiPtr);
+
+        private void oAsyncMessageWindow_MessageReceived(object sender, AsyncMessageWindow.MessageReceivedEventArgs e)
+        {
+            try
+            {
+                if (e.ReceivedMessage.Msg == 14055)
+                {
+                    switch (this.m_DecodeType)
+                    {
+                        case DecodeAssembly.DecodeTypes.Barcode:
+                        {
+                            this.CompleteAsyncDecode();
+                            break;
+                        }
+                        case DecodeAssembly.DecodeTypes.Cancel:
+                        {
+                            this.DecodeData = new DecodeAssembly.DecodeEventArgs(null, new DecodeException(DecodeAssembly.ResultCodes.Cancel), DecodeAssembly.ResultCodes.Cancel, string.Empty, null, string.Empty, string.Empty, string.Empty, 0);
+                            this.OnDecodeEvent(this.DecodeData);
+                            break;
+                        }
+                        case DecodeAssembly.DecodeTypes.IqImage:
+                        {
+                            this.IqImage();
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Event method used to raise the Decode event by invoking the delegate
+        /// </summary>
+        /// <param name="e">DecodeEventArgs class</param>
+        protected virtual void OnDecodeEvent(DecodeAssembly.DecodeEventArgs e)
+        {
+            if (this.DecodeEvent != null)
+            {
+                this.DecodeEvent(this, e);
+            }
+        }
+
+        /// <summary>
+        /// </summary>
+        /// <param name="e"></param>
+        protected virtual void OnIqImageEvent(DecodeAssembly.IqImageEventArgs e)
+        {
+            if (this.IqImageEvent != null)
+            {
+                this.IqImageEvent(this, e);
+            }
+        }
+
+        /// <summary>
+        /// Event method used to raise the MultiDecode event by invoking the delegate
+        /// </summary>
+        /// <param name="e">DecodeEventArgs class</param>
+        protected virtual void OnMultiDecodeEvent(DecodeAssembly.MultiDecodeEventArgs e)
+        {
+            if (this.MultiDecodeEvent != null)
+            {
+                this.MultiDecodeEvent(this, e);
+            }
+        }
+
+        /// <summary>
+        /// Saves the last decode image to an image file.
+        /// </summary>
+        /// <param name="ImageFileFormat">The format to save the image.</param>
+        public void SaveLastImage(DecodeAssembly.IqImageFileFormats ImageFileFormat)
+        {
+            try
+            {
+                string str = "\\Honeywell\\SaveLastImage_";
+                string empty = string.Empty;
+                ImageFormat bmp = null;
+                switch (ImageFileFormat)
+                {
+                    case DecodeAssembly.IqImageFileFormats.Bmp:
+                    {
+                        empty = ".Bmp";
+                        bmp = ImageFormat.Bmp;
+                        break;
+                    }
+                    case DecodeAssembly.IqImageFileFormats.Gif:
+                    {
+                        empty = ".Gif";
+                        bmp = ImageFormat.Gif;
+                        break;
+                    }
+                    case DecodeAssembly.IqImageFileFormats.Jpeg:
+                    {
+                        empty = ".Jpeg";
+                        bmp = ImageFormat.Jpeg;
+                        break;
+                    }
+                    case DecodeAssembly.IqImageFileFormats.Png:
+                    {
+                        empty = ".Png";
+                        bmp = ImageFormat.Png;
+                        break;
+                    }
+                }
+                int num = 1;
+                while (File.Exists(string.Concat(str, num.ToString(), empty)))
+                {
+                    num++;
+                }
+                str = string.Concat(str, num.ToString(), empty);
+                int num1 = 0;
+                int num2 = 0;
+                int num3 = 0;
+                DecodeAssembly.LastDecodeResult(DecodeAssembly.GetProperty(402735105, ref num3));
+                byte[] numArray = new byte[num3];
+                DecodeAssembly.LastDecodeResult(DecodeAssembly.GetLastImage(numArray, ref num1, ref num2));
+                Image imageFromBuffer = this.GetImageFromBuffer(num1, num2, numArray);
+                if (imageFromBuffer == null)
+                {
+                    DecodeAssembly.LastDecodeResult(DecodeAssembly.ResultCodes.NoImage);
+                }
+                else
+                {
+                    imageFromBuffer.Save(str, bmp);
+                }
+            }
+            catch (IOException oException)
+            {
+                DecodeAssembly.LastDecodeResult(DecodeAssembly.ResultCodes.MemoryError);
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Initiate an Asynchronous Decode Operation.
+        /// </summary>
+        public void ScanBarcode()
+        {
+            try
+            {
+                this.InitiateAsyncDecode(DecodeAssembly.DecodeTypes.Barcode);
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Initiate a Multiple Decode Operation.
+        /// </summary>
+        /// <param name="scanTimeout">The maximum time to perform the operation.</param>
+        /// <param name="vKey">The key used to call the ScanMultipleBarcodes procedure.</param>
+        public void ScanMultipleBarcodes(int scanTimeout, int vKey)
+        {
+            try
+            {
+                this.ContinueMultiDecode = true;
+                this.VirtualKey = vKey;
+                this.LastMultiDecodeResult = DecodeAssembly.ResultCodes.Success;
+                this.LastMultiDecodeResult = DecodeAssembly.MultipleDecode(scanTimeout, new DecodeAssembly.MultiDecodeDelegate(this.MultiDecodeCallback), new DecodeAssembly.ContinueMultiDecodeDelegate(this.ContinueMultiDecodeCallback));
+                if (this.LastMultiDecodeResult != DecodeAssembly.ResultCodes.NoTrigger)
+                {
+                    this.LastMultiDecodeResult = DecodeAssembly.ResultCodes.NoDecode;
+                    this.OnMultiDecodeEvent(new DecodeAssembly.MultiDecodeEventArgs(null, new DecodeException(this.LastMultiDecodeResult), this.LastMultiDecodeResult, string.Empty, null, string.Empty, string.Empty, string.Empty, 0));
+                }
+                else
+                {
+                    this.OnMultiDecodeEvent(new DecodeAssembly.MultiDecodeEventArgs(null, new DecodeException(this.LastMultiDecodeResult), this.LastMultiDecodeResult, string.Empty, null, string.Empty, string.Empty, string.Empty, 0));
+                }
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decSetStringProperty", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes SetByteArrayProperty([In] int Property, [In] IntPtr Value);
+
+        /// <summary>
+        /// Sets a decoder property to the specified value
+        /// </summary>
+        /// <param name="Property">One of the decoder properties</param>
+        /// <param name="Value">Value to set the property to</param>
+        public void SetDecoderProperty(Enum Property, int Value)
+        {
+            try
+            {
+                DecodeAssembly.SetProperty(Convert.ToInt32(Property), Value);
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Sets a decoder property to the specified enum value
+        /// </summary>
+        /// <param name="Property">One of the decoder properties</param>
+        /// <param name="Value">One of the DecodeAssembly property enum values</param>
+        public void SetDecoderProperty(Enum Property, Enum Value)
+        {
+            try
+            {
+                int num = Convert.ToInt32(Property);
+                DecodeAssembly.SetProperty(num, Convert.ToInt32(Value));
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Sets a decoder byte string property, i.e. OCR user template
+        /// </summary>
+        /// <param name="Property">Decoder property to set</param>
+        /// <param name="Value">Byte string value</param>
+        public void SetDecoderProperty(Enum Property, byte[] Value)
+        {
+            try
+            {
+                IntPtr intPtr = Marshal.AllocHGlobal(Marshal.SizeOf(Value));
+                Marshal.Copy(Value, 0, intPtr, Marshal.SizeOf(Value));
+                DecodeAssembly.SetByteArrayProperty(Convert.ToInt32(Property), intPtr);
+                Marshal.FreeHGlobal(intPtr);
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Sets all of the decoder settings to their default value.
+        /// </summary>
+        public void SetDefaults()
+        {
+            try
+            {
+                DecodeAssembly.decSetDefaults();
+            }
+            catch (Exception exception)
+            {
+                throw;
+            }
+        }
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decSetProperty", ExactSpelling=false, SetLastError=true)]
+        private static extern int SetProperty([In] int Property, [In] int Value);
+
+        [DllImport("coredll.dll", CharSet=CharSet.Unicode, EntryPoint="GetAsyncKeyState", ExactSpelling=false, SetLastError=true)]
+        private static extern short sysGetAsyncKeyState(int vKey);
+
+        [DllImport("DecoderAPI.dll", CharSet=CharSet.Unicode, EntryPoint="decUninitializeDecoder", ExactSpelling=false, SetLastError=true)]
+        private static extern DecodeAssembly.ResultCodes UninitializeDecoder();
+
+        /// <summary>
+        /// Public instance of the Decode Event.
+        /// </summary>
+        public event DecodeAssembly.DecodeEventHandler DecodeEvent;
+
+        /// <summary>
+        /// Public instance of the IQ Image Event.
+        /// </summary>
+        public event DecodeAssembly.IqImageEventHandler IqImageEvent;
+
+        /// <summary>
+        /// Public instance of the DecMultiDecodeode Event.
+        /// </summary>
+        public event DecodeAssembly.MultiDecodeEventHandler MultiDecodeEvent;
+
+        private delegate int ContinueMultiDecodeDelegate();
+
+        /// <summary>
+        /// The DecodeEventArgs class defines the data being passed to the decode event.
+        /// </summary>
+        public class DecodeEventArgs : EventArgs
+        {
+            private readonly Exception m_Exception;
+
+            private readonly DecodeException m_DecodeException;
+
+            private readonly DecodeAssembly.ResultCodes m_ResultCode;
+
+            private readonly string m_Message;
+
+            private readonly string m_CodeId;
+
+            private readonly string m_AimId;
+
+            private readonly string m_AimModifier;
+
+            private readonly int m_Length;
+
+            private readonly byte[] m_rawData;
+
+            public string AimId
+            {
+                get
+                {
+                    return this.m_AimId;
+                }
+            }
+
+            public string AimModifier
+            {
+                get
+                {
+                    return this.m_AimModifier;
+                }
+            }
+
+            public string CodeId
+            {
+                get
+                {
+                    return this.m_CodeId;
+                }
+            }
+
+            public DecodeException DecodeException
+            {
+                get
+                {
+                    return this.m_DecodeException;
+                }
+            }
+
+            public Exception Exception
+            {
+                get
+                {
+                    return this.m_Exception;
+                }
+            }
+
+            public int Length
+            {
+                get
+                {
+                    return this.m_Length;
+                }
+            }
+
+            public string Message
+            {
+                get
+                {
+                    return this.m_Message;
+                }
+            }
+
+            public byte[] RawData
+            {
+                get
+                {
+                    return this.m_rawData;
+                }
+            }
+
+            public DecodeAssembly.ResultCodes ResultCode
+            {
+                get
+                {
+                    return this.m_ResultCode;
+                }
+            }
+
+            internal DecodeEventArgs(System.Exception Exception, HSM.Embedded.Decoding.DecodeException DecodeException, DecodeAssembly.ResultCodes ResultCode, string Message, byte[] RawData, string CodeId, string AimId, string AimModifier, int Length)
+            {
+                this.m_Exception = Exception;
+                this.m_DecodeException = DecodeException;
+                this.m_ResultCode = ResultCode;
+                this.m_Message = Message;
+                this.m_rawData = RawData;
+                this.m_CodeId = CodeId;
+                this.m_AimId = AimId;
+                this.m_AimModifier = AimModifier;
+                this.m_Length = Length;
+            }
+        }
+
+        /// <summary>
+        /// Decode event delegate that handles the DecodeEventArgs.
+        /// </summary>
+        /// <param name="sender">Sender source.</param>
+        /// <param name="e">DecodeEventArgs class.</param>
+        public delegate void DecodeEventHandler(object sender, DecodeAssembly.DecodeEventArgs e);
+
+        private struct DecodeMsg_t
+        {
+            public IntPtr Message;
+
+            public byte CodeID;
+
+            public byte SymLetter;
+
+            public byte SymModifier;
+
+            public short Length;
+        }
+
+        /// <summary>
+        /// The DecodeSetting properties are used to set and retrieve misc. properties associated with scanning
+        /// </summary>
+        public enum DecodeSetting
+        {
+            SearchTimeLimit = 402731008,
+            DecodeAttemptlimit = 402731009,
+            ScanningLightsMode = 402731010,
+            ScanInProgress = 402731022,
+            LastImageSize = 402735105,
+            ReverseVideoEnable = 436211716
+        }
+
+        private enum DecodeTypes
+        {
+            Barcode,
+            Cancel,
+            IqImage
+        }
+
+        /// <summary>
+        /// The Engine properties are used to retrieve details about the installed engine and to control
+        /// the illumination and aimer LEDs when not scanning
+        /// </summary>
+        public enum Engine
+        {
+            Type = 402726912,
+            ID = 402726913,
+            NumRows = 402726914,
+            NumCols = 402726915,
+            BitsPerPixel = 402726916,
+            Rotation = 402726917,
+            Xoffset = 402726918,
+            Yoffset = 402726919,
+            Depth = 402726920
+        }
+
+        /// <summary>
+        /// IQ Image properties are used to define the details associated with an IQ Image capture attempt.
+        /// </summary>
+        public enum IQImage
+        {
+            AspectRatio = 402739200,
+            X_Offset = 402739201,
+            Y_Offset = 402739202,
+            ImageWidth = 402739203,
+            ImageHeight = 402739204,
+            Resolution = 402739205,
+            Format = 402739206
+        }
+
+        /// <summary>
+        /// The IqImageEventArgs class defines the data that is being passed from the IqImage Event.
+        /// </summary>
+        public class IqImageEventArgs : DecodeAssembly.DecodeEventArgs
+        {
+            private readonly Image m_IqImage;
+
+            public Image IqImage
+            {
+                get
+                {
+                    return this.m_IqImage;
+                }
+            }
+
+            internal IqImageEventArgs(System.Exception Exception, HSM.Embedded.Decoding.DecodeException DecodeException, DecodeAssembly.ResultCodes ResultCode, string Message, byte[] RawData, string CodeId, string AimId, string AimModifier, int Length, Image IqImage) : base(Exception, DecodeException, ResultCode, Message, RawData, CodeId, AimId, AimModifier, Length)
+            {
+                this.m_IqImage = IqImage;
+            }
+        }
+
+        /// <summary>
+        /// IQ Image Event Delegate which will pass the IqImageEventArgs.
+        /// </summary>
+        /// <param name="sender">Object source.</param>
+        /// <param name="e">IqImageEventArgs class.</param>
+        public delegate void IqImageEventHandler(object sender, DecodeAssembly.IqImageEventArgs e);
+
+        /// <summary>
+        /// Image File Format Options
+        /// </summary>
+        public enum IqImageFileFormats
+        {
+            Bmp,
+            Gif,
+            Jpeg,
+            Png
+        }
+
+        /// <summary>
+        /// IQ Image Format Options
+        /// </summary>
+        public enum IqImageFormats
+        {
+            Binary,
+            Gray
+        }
+
+        /// <summary>
+        /// IQ Image Operation Types
+        /// </summary>
+        public enum IqImageTypes
+        {
+            BarcodeAndImage,
+            ImageOnly
+        }
+
+        /// <summary>
+        /// LastDecode properties are used to retrieve details about the last decode attempt.
+        /// </summary>
+        public enum LastDecode
+        {
+            Time = 402747392,
+            Length = 402747393,
+            CodeID = 402747394,
+            AimID = 402747395,
+            AimModifier = 402747396,
+            Data = 402747397
+        }
+
+        /// <summary>
+        /// LinearCodes are properties used to set or get the symbology specific settings for linear\1D barcodes like Code39, Code128 etc.
+        /// </summary>
+        public enum LinearCodes
+        {
+            Code128Enabled = 436289537,
+            Code128MinLength = 436289538,
+            Code128MaxLength = 436289539,
+            Code128AppendEnabled = 436289540,
+            ISBT128Enabled = 436289541,
+            Code128FNC1Sub = 436289542,
+            Code128FNC1Transmit = 436289543,
+            GS1_128Enabled = 436293633,
+            GS1_128MinLength = 436293634,
+            GS1_128MaxLength = 436293635,
+            Code39Enabled = 436297729,
+            Code39MinLength = 436297730,
+            Code39MaxLength = 436297731,
+            Code39CheckDigitMode = 436297732,
+            Code39FullAsciiEnable = 436297734,
+            Code39StartStopTransmit = 436297735,
+            Code39Base32Enabled = 436297736,
+            TLC39Enabled = 436301825,
+            TriopticEnabled = 436305921,
+            Int25Enabled = 436310017,
+            Int25MinLength = 436310018,
+            Int25MaxLength = 436310019,
+            Int25CheckDigitMode = 436310020,
+            Standard25Enabled = 436314113,
+            Standard25MinLength = 436314114,
+            Standard25MaxLength = 436314115,
+            IATA25Enabled = 436318209,
+            IATA25MinLength = 436318210,
+            IATA25MaxLength = 436318211,
+            Matrix25Enabled = 436322305,
+            Matrix25MinLength = 436322306,
+            Matrix25MaxLength = 436322307,
+            Matrix25CheckDigitMode = 436322308,
+            Code93Enabled = 436326401,
+            Code93MinLength = 436326402,
+            Code93MaxLength = 436326403,
+            Code93AppendEnable = 436326404,
+            Code11Enabled = 436330497,
+            Code11MinLength = 436330498,
+            Code11MaxLength = 436330499,
+            Code11CheckDigitMode = 436330500,
+            CodabarEnabled = 436334593,
+            CodabarMinLength = 436334594,
+            CodabarMaxLength = 436334595,
+            CodabarStartStopXmit = 436334596,
+            CodabarCheckDigitMode = 436334597,
+            CodabarConcatEnable = 436334599,
+            TelepenEnabled = 436338689,
+            TelepenMinLength = 436338690,
+            TelepenMaxLength = 436338691,
+            MSIEnabled = 436342785,
+            MSIMinLength = 436342786,
+            MSIMaxLength = 436342787,
+            MSICheckDigitMode = 436342788,
+            RSS_14EEnabled = 436346881,
+            RSS_LimitedEnabled = 436346882,
+            RSS_ExpandedEnabled = 436346883,
+            RSSExpandedMinLength = 436346884,
+            RSSExpandedMaxLength = 436346885,
+            ChinaPostEnabled = 436387841,
+            ChinaPostMinLength = 436387842,
+            ChinaPostMaxLength = 436387843,
+            NEC25Enabled = 436400129,
+            NEC25MinLength = 436400130,
+            NEC25MaxLength = 436400131,
+            NEC25CheckDigitMode = 436400132,
+            KoreanPostEnabled = 437256193,
+            KoreanPostMinLength = 437256194,
+            KoreanPostMaxLength = 437256195,
+            KoreanPostChkDigitXmit = 437256196,
+            KoreanPostReverseOutput = 437256197
+        }
+
+        /// <summary>
+        /// MatrixCode properties are used to set or get the symbology specific settings for matrix or 2 Dimensional barcodes like PDF 417
+        /// Maxicode, QR Code, etc
+        /// </summary>
+        public enum MatrixCodes
+        {
+            CodaBlock_F_Enabled = 436350977,
+            CodaBlock_F_MinLength = 436350978,
+            CodaBlock_F_MaxLength = 436350979,
+            PDF417Enabled = 436355073,
+            PDF417MinLength = 436355074,
+            PDF417MaxLength = 436355075,
+            MicroPDFEnabled = 436359169,
+            MicroPDFMinLength = 436359170,
+            MicroPDFMaxLength = 436359171,
+            CompositeEnabled = 436363265,
+            CompositeMinLength = 436363266,
+            CompositeMaxLength = 436363267,
+            CompositeWithUPCEnabled = 436363268,
+            AztecEnabled = 436367361,
+            AztecMinLength = 436367362,
+            AztecMaxLength = 436367363,
+            AztecAppendEnable = 436367364,
+            MaxicodeEnabled = 436371457,
+            MaxicodeMinLength = 436371458,
+            MaxicodeMaxLength = 436371459,
+            DataMatrixEnabled = 436375553,
+            DataMatrixMinLength = 436375554,
+            DataMatrixMaxLength = 436375555,
+            QRCodeEnabled = 436379649,
+            QRCodeMinLength = 436379650,
+            QRCodeMaxLength = 436379651,
+            QRCodeAppendEnable = 436379652,
+            HanXinEnabled = 436383745,
+            HanXinMinLength = 436383746,
+            HanXinMaxLength = 436383747,
+            CodaBlock_A_Enabled = 436404225,
+            CodaBlock_A_MinLength = 436404226,
+            CodaBlock_A_MaxLength = 436404227,
+            Postal = 437321729
+        }
+
+        internal enum Misc
+        {
+            AimerOn = 402726921,
+            LightOn = 402726922,
+            DEC_SYM_ALL = 436215812
+        }
+
+        private delegate int MultiDecodeDelegate(ref DecodeAssembly.DecodeMsg_t ptr);
+
+        /// <summary>
+        /// The MultiDecodeEventArgs class defines the data being passed to the Multidecode event.
+        /// </summary>
+        public class MultiDecodeEventArgs : DecodeAssembly.DecodeEventArgs
+        {
+            internal MultiDecodeEventArgs(System.Exception Exception, HSM.Embedded.Decoding.DecodeException DecodeException, DecodeAssembly.ResultCodes ResultCode, string Message, byte[] RawData, string CodeId, string AimId, string AimModifier, int Length) : base(null, DecodeException, ResultCode, Message, RawData, CodeId, AimId, AimModifier, Length)
+            {
+            }
+        }
+
+        /// <summary>
+        /// MultiDecode event delegate that handles the MultiDecodeEventArgs.
+        /// </summary>
+        /// <param name="sender">Sender source.</param>
+        /// <param name="e">MultiDecodeEventArgs class.</param>
+        public delegate void MultiDecodeEventHandler(object sender, DecodeAssembly.MultiDecodeEventArgs e);
+
+        /// <summary>
+        /// OCR Enable Modes for decSetOCRUserTemplate
+        /// </summary>
+        public enum OCREnableModes
+        {
+            Off,
+            NormalVideo,
+            InverseVideo,
+            Both
+        }
+
+        /// <summary>
+        ///  The OCRSetting properties are used to set and retrieve decoder properties associated with reading OCR
+        /// </summary>
+        public enum OCRSetting
+        {
+            Mode = 436391937,
+            UserTemplate = 436391938,
+            ActiveTemplates = 453169155
+        }
+
+        /// <summary>
+        /// OCR Template Types for decSetOCRTemplates
+        /// </summary>
+        public enum OCRTemplates
+        {
+            UserTemplate = 1,
+            PassportTemplate = 2,
+            ISBNTemplate = 4,
+            PriceFieldTemplate = 8,
+            MicrE13BTemplate = 16
+        }
+
+        /// <summary>
+        /// Postal codes are properties used to enable a specific postal barcode. NOTE: Only one PostalCode may be enable at a time.
+        /// </summary>
+        public enum PostalCodes
+        {
+            NoPostals = 0,
+            AustralianPost = 1,
+            JapanesePost = 3,
+            KIXPost = 4,
+            PlanetCode = 5,
+            Postnet = 6,
+            BritishPost = 7,
+            RoyalPost = 7,
+            British_Royal = 8,
+            UPU_4_State = 9,
+            USPS_4_State = 10,
+            Planet_Posnet = 12,
+            US_Postals = 29,
+            CanadianPost = 30
+        }
+
+        /// <summary>
+        /// Possible Return Codes from PInvoke DecoderAPI.dll Function Calls
+        /// </summary>
+        public enum ResultCodes
+        {
+            Initialize = -1,
+            Success = 0,
+            BadRegion = 1,
+            DriverError = 2,
+            EngineBusy = 3,
+            MemoryError = 4,
+            NoDecode = 5,
+            NoImage = 6,
+            NoResponse = 7,
+            NotConnected = 8,
+            ParameterError = 9,
+            UnSupported = 10,
+            NoTrigger = 11,
+            BadSmartImage = 12,
+            SmartImageTooLarge = 13,
+            TooMuchInterpolation = 14,
+            ThreadError = 15,
+            Cancel = 16,
+            DecoderException = 17,
+            UnsupportdIQBarcode = 18,
+            NoData = 19,
+            DecodeTfConfigSuccess = 20,
+            DecodeTfConfigFailure = 21
+        }
+
+        /// <summary>
+        /// RetailCodes are properties used to set or get the symbology specific settings for retail codes like UPC, EAN13. etc.
+        /// </summary>
+        public enum RetailCodes
+        {
+            CouponCodeEnabled = 436232193,
+            UPC_A_Enabled = 436273153,
+            UPC_A_ChKDigitXmit = 436273154,
+            UPC_A_NumSysXmit = 436273155,
+            UPC_A_2DigitAddendaEnabled = 436273156,
+            UPC_A_5DigitAddendaEnabled = 436273157,
+            UPC_A_AddendaReq = 436273158,
+            UPC_A_AddendaXmit = 436273159,
+            UPC_E0_Enabled = 436277249,
+            UPC_E1_Enabled = 436277250,
+            UPC_E_Expand = 436277251,
+            UPC_E_ChKDigitXmit = 436277252,
+            UPC_E_NumSysXmit = 436277253,
+            UPC_E_2DigitAddendaEnabled = 436277254,
+            UPC_E_5DigitAddendaEnabled = 436277255,
+            UPC_E_AddendaReq = 436277256,
+            UPC_E_AddendaSeparator = 436277257,
+            EAN_8_Enabled = 436281345,
+            EAN_8_ChKDigitXmit = 436281346,
+            EAN_8_2DigitAddendaEnabled = 436281347,
+            EAN_8_5DigitAddendaEnabled = 436281348,
+            EAN_8_AddendaReq = 436281349,
+            EAN_8_AddendaSeparator = 436281350,
+            EAN_13_Enabled = 436285441,
+            EAN_13_ChKDigitXmit = 436285442,
+            EAN_13_2DigitAddendaEnabled = 436285443,
+            EAN_13_5DigitAddendaEnabled = 436285444,
+            EAN_13_AddendaReq = 436285445,
+            EAN_13_AddendaSeparator = 436285446,
+            EAN_13_ISBNEnabled = 436285447
+        }
+
+        /// <summary>
+        /// Revision properties are used to retrieve revision details about the various DLLs related to scanning.
+        /// </summary>
+        public enum Revision
+        {
+            DecoderAPI = 402743296,
+            PrimaryDecoder = 402743297,
+            SecondaryDecoder = 402743298,
+            DecodeControlLogic = 402743299,
+            DecodeThreads = 402743300,
+            ScanInterface = 402743301,
+            ScanDriver = 402743302
+        }
+
+        private enum Symbology
+        {
+            Barcode,
+            Cancel,
+            IqImage
+        }
+
+        /// <summary>
+        /// LinearCode are properties used to set or get the symbology specific settings for linear\1D barcodes.
+        /// </summary>
+        internal enum UnsupportedCodes
+        {
+            Code16K = 0,
+            Code49 = 0,
+            GridMatrix = 0,
+            LabelCode = 0,
+            Plessey = 0,
+            Posicode = 0
+        }
+
+        /// <summary>
+        ///  Decoder properties associated with the centering window funcitonality
+        /// </summary>
+        public enum WindowSetting
+        {
+            WindowUpperLeft_X = 402718721,
+            WindowUpperLeft_Y = 402718722,
+            WindowLowerRight_X = 402718723,
+            WindowLowerRight_Y = 402718724,
+            CenteringEnabled = 402718725
+        }
+    }
+}
+
+ Expand All Members 
