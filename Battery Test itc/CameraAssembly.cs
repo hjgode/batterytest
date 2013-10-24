@@ -9,7 +9,7 @@ using Intermec.Multimedia;
 
 namespace CameraAssembly
 {
-    class CameraAssembly:System.Windows.Forms.Control,ICameraAssembly,IDisposable
+    class CameraAssembly:ICameraAssembly,IDisposable
     {
         static Intermec.Multimedia.Camera cam;
         Camera.Resolution currentRes;
@@ -82,7 +82,30 @@ namespace CameraAssembly
                 doHandleEvent(cea);
             }
         }
-        public void GetResolutionCount(out long resCount){
+
+        public void Disconnect()
+        {
+            //just shut foo streaming or dispose the camera????
+            addLog("Disconnect...");
+            if (cam == null)
+            {
+                addLog("Disconnect: no cam!");
+                return;
+            }
+            cam.Streaming = false;
+            if (cam.Features.Torch.Available)
+                cam.Features.Torch.CurrentValue = cam.Features.Torch.MinValue;
+            //try
+            //{
+            //    cam.Dispose();
+            //}
+            //catch (Exception) { }
+            cam = null;
+            addLog("Disconnect done.");
+        }
+        
+        public void GetResolutionCount(out long resCount)
+        {
             addLog("GetResolutionCount...");
             if (cam == null)
             {
@@ -121,24 +144,6 @@ namespace CameraAssembly
                     break;
             }
             addLog("SetProperty done");
-        }
-        public void Disconnect(){
-            addLog("Disconnect...");
-            if (cam == null)
-            {
-                addLog("Disconnect: no cam!");
-                return;
-            }
-            cam.Streaming = false;
-            if (cam.Features.Torch.Available)
-                cam.Features.Torch.CurrentValue = cam.Features.Torch.MinValue;
-            try
-            {
-                cam.Dispose();
-            }
-            catch (Exception) { }
-            cam = null;
-            addLog("Disconnect done.");
         }
         
         public void StartPreview(){
