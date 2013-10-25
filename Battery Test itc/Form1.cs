@@ -864,6 +864,24 @@ namespace Battery_Test_itc
         {
             if (MessageBox.Show("Stoppen?", "trans-o-flex", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.OK)
             {
+#if !HSM
+                try
+                {
+                    da.Dispose();
+                    da = null;
+                }
+                catch (Exception)
+                {
+                }
+                try
+                {
+                    ca.Dispose();
+                    ca = null;
+                }
+                catch (Exception)
+                {
+                }
+#endif
                 Application.Exit();
             }
         }
