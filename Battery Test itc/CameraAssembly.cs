@@ -15,15 +15,17 @@ namespace CameraAssembly
         Camera.Resolution currentRes;
         Timer timer1;
         int m_iTimeout = 3000;
-        /// <summary>
-        /// provider for event subscription
-        /// </summary>
-        public event CameraAssembly.CameraEventHandler CameraEvent;
+
+        ///// <summary>
+        ///// provider for event subscription
+        ///// </summary>
+        public event CameraEventHandler CameraEvent;
 
         public CameraAssembly()
         {
             addLog("CameraAssembly started");
             TimerCallback timerDelegate = new TimerCallback(timerCallback);
+            //init the timer but do not start it
             timer1 = new Timer(timerDelegate, null, System.Threading.Timeout.Infinite, m_iTimeout);
         }
 
@@ -65,16 +67,17 @@ namespace CameraAssembly
         public void Connect(System.Windows.Forms.PictureBox pb, object o1, object o2)
         {
             addLog("Connect...");
-            if (cam != null)
-            {
-                addLog("Connect: disposing existing cam!");
-                cam.Dispose();
-            }
             try
             {
-                addLog("Connect: create new cam...");
-                cam = new Camera(pb, Camera.ImageResolutionType.Lowest);
-                addLog("Connect: create new cam done");
+                if (cam == null)
+                {
+                    cam = new Camera(pb, Camera.ImageResolutionType.Lowest);
+                    addLog("Connect: created new cam");
+                }
+                else
+                {
+                    addLog("Connect: using existing cam...");
+                }
             }
             catch (Exception) {
                 //we have to set the event, otherwise the main app will never stop!
@@ -93,6 +96,7 @@ namespace CameraAssembly
                 return;
             }
             cam.Streaming = false;
+            cam.PictureBoxUpdate = Camera.PictureBoxUpdateType.None;
             if (cam.Features.Torch.Available)
                 cam.Features.Torch.CurrentValue = cam.Features.Torch.MinValue;
             //try
@@ -100,7 +104,7 @@ namespace CameraAssembly
             //    cam.Dispose();
             //}
             //catch (Exception) { }
-            cam = null;
+            //cam = null;
             addLog("Disconnect done.");
         }
         
@@ -172,9 +176,7 @@ namespace CameraAssembly
             timer1.Change(Timeout.Infinite, m_iTimeout);
             addLog("StopPreview done.");
         }
-        //public void CameraEvent()
-        //{
-        //}
+
         public delegate void CameraEventHandler(object s, CameraEventArgs args);
         void doHandleEvent(CameraEventArgs args)
         {

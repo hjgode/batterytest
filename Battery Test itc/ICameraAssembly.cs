@@ -8,7 +8,8 @@ namespace CameraAssembly
     public delegate void CameraEventHandler(object sender, CameraEventArgs e);
     interface ICameraAssembly
     {
-        event CameraEventHandler CameraEvent;
+        //event CameraEventHandler CameraEvent; //can not define this, implementation fails
+        //event EventHandler CameraEvent; //also not OK as we need a CameraEventHandler
         void Disconnect();
         void Connect(IntPtr handle, object o1, object o2);
         void GetResolutionCount(out long lCount);

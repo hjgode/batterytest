@@ -748,18 +748,25 @@ namespace Battery_Test_itc
 
         private void doPresetBelade1()
         {
+#if DEBUG
+            this.numericUpDownBeladeLaufzeitStunden.Value = 1;
+            this.numericUpDownBeladeScanBarcodes.Value = 200;
+            this.numericUpDownBeladeSnapPhotos.Value = 200;
+            this.numericUpDownBeladeFTPSessions.Value = 0;
+#else
             this.numericUpDownBeladeLaufzeitStunden.Value = 3;
 
             this.numericUpDownBeladeScanBarcodes.Value = 200;
-            this.numericUpDownBeladeScanBarcodeDurationSekunden.Value = 5;
 
             this.numericUpDownBeladeSnapPhotos.Value = 10;
-            this.numericUpDownBeladeSnapPhotoDurationSekunden.Value = 10;
 
             this.numericUpDownBeladeFTPSessions.Value = 50;
-            this.numericUpDownBeladeFTPSessionSize.Value = 1024;
 
             this.numericUpDownBeladeFTPBulkSize.Value = 10;
+#endif
+            this.numericUpDownBeladeScanBarcodeDurationSekunden.Value = 5;
+            this.numericUpDownBeladeSnapPhotoDurationSekunden.Value = 10;
+            this.numericUpDownBeladeFTPSessionSize.Value = 1024;
         }
 
 
