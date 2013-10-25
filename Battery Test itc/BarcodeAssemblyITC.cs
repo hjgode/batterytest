@@ -137,14 +137,15 @@ namespace DecodeAssemblyITC
                     bcr.BarcodeRead -= bcr_BarcodeRead;
                     addLog("cancel pending read");
                     bcr.CancelRead(true);
+                    addLog("Disposing barcodereader");
+                    bcr.Dispose();
+                    addLog("set barcodereader=null");
+                    bcr = null;
                 }
                 else
+                {
                     addLog("no barcodereader!");
-
-                addLog("Disposing barcodereader");
-                bcr.Dispose();
-                addLog("set barcodereader=null");
-                bcr = null;
+                }
             }
             catch (Exception ex) {
                 addLog("Exception in Disconnect(): " + ex.Message);

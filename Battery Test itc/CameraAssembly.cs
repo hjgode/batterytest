@@ -15,6 +15,7 @@ namespace CameraAssembly
         Camera.Resolution currentRes;
         Timer timer1;
         int m_iTimeout = 3000;
+        System.Windows.Forms.PictureBox m_pb = null;
 
         ///// <summary>
         ///// provider for event subscription
@@ -63,21 +64,72 @@ namespace CameraAssembly
             addLog("Connect with handle UNSUPPORTED");
             cam = new Camera(Intermec.Multimedia.Camera.ImageResolutionType.Medium);
         }
+        
+        void startCAM()
+        {
+            addLog("startCAM()");
+            if (cam == null)
+            {
+                addLog("creat new cam");
+                cam = new Camera(m_pb, Camera.ImageResolutionType.Lowest);
+            }
+            else
+            {
+                addLog("using existing cam");
+            }
+        }
+        
+        void stopCAM()
+        {
+            addLog("StopCAM()");
+            if (cam == null)
+            {
+                addLog("StopCAM(): no cam");
+                startCAM();
+                //return;
+            }
+            
+            if(true)
+            {
+                cam.Streaming = false;
+                cam.PictureBoxUpdate = Camera.PictureBoxUpdateType.None;
+                if (cam.Features.Torch.Available)
+                    cam.Features.Torch.CurrentValue = cam.Features.Torch.MinValue;
+            }
+            try
+            {
+                //we have to set the event, otherwise the main app will never stop!
+                CameraEventArgs cea = new CameraEventArgs(CameraTaskCodes.ImageCaptureComplete);
+                doHandleEvent(cea);
+                Thread.Sleep(200);
+            }
+            catch (Exception ex)
+            {
+                addLog("stopCAM(): Exception for doHandleEvent(): " + ex.Message);
+            }
+            //addLog("StopCAM(): DeInit cam");            
+            //cam.Dispose();
+            //cam = null;
+
+            addLog("StopCAM() done");
+        }
 
         public void Connect(System.Windows.Forms.PictureBox pb, object o1, object o2)
         {
             addLog("Connect...");
             try
             {
-                if (cam == null)
-                {
-                    cam = new Camera(pb, Camera.ImageResolutionType.Lowest);
-                    addLog("Connect: created new cam");
-                }
-                else
-                {
-                    addLog("Connect: using existing cam...");
-                }
+                startCAM();
+                //if (cam == null)
+                //{
+                //    m_pb = pb;
+                //    cam = new Camera(pb, Camera.ImageResolutionType.Lowest);
+                //    addLog("Connect: created new cam");
+                //}
+                //else
+                //{
+                //    addLog("Connect: using existing cam...");
+                //}
             }
             catch (Exception) {
                 //we have to set the event, otherwise the main app will never stop!
@@ -88,23 +140,9 @@ namespace CameraAssembly
 
         public void Disconnect()
         {
-            //just shut foo streaming or dispose the camera????
+            //just shut of streaming or dispose the camera????
             addLog("Disconnect...");
-            if (cam == null)
-            {
-                addLog("Disconnect: no cam!");
-                return;
-            }
-            cam.Streaming = false;
-            cam.PictureBoxUpdate = Camera.PictureBoxUpdateType.None;
-            if (cam.Features.Torch.Available)
-                cam.Features.Torch.CurrentValue = cam.Features.Torch.MinValue;
-            //try
-            //{
-            //    cam.Dispose();
-            //}
-            //catch (Exception) { }
-            //cam = null;
+            stopCAM();
             addLog("Disconnect done.");
         }
         
@@ -181,10 +219,21 @@ namespace CameraAssembly
         void doHandleEvent(CameraEventArgs args)
         {
             addLog("doHandleEvent...");
+            CameraEventArgs localEA = args;
             if (CameraEvent != null)
             {
                 addLog("doHandleEvent: fire event");
-                CameraEvent(this, args);
+                if (cam != null)
+                    try
+                    {
+                        CameraEvent(this, localEA);
+                    }
+                    catch (Exception ex)
+                    {
+                        addLog("Exception in CameraEvent: " + ex.Message);
+                    }
+                else
+                    addLog("dHandleEvent() cam is null");
             }
             addLog("doHandleEvent done.");
         }
