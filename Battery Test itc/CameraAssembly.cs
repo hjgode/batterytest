@@ -71,7 +71,7 @@ namespace CameraAssembly
             if (cam == null)
             {
                 addLog("creat new cam");
-                cam = new Camera(m_pb, Camera.ImageResolutionType.Lowest);
+                cam = new Camera(m_pb, Camera.ImageResolutionType.Medium);
             }
             else
             {

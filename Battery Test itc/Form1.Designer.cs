@@ -116,11 +116,17 @@
             this.timerPositionGPS = new System.Windows.Forms.Timer();
             this.timerCycleInterval = new System.Windows.Forms.Timer();
             this.timerFixPositionGPS = new System.Windows.Forms.Timer();
+            this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.btnTestScanner = new System.Windows.Forms.Button();
+            this.btnTestCamera = new System.Windows.Forms.Button();
+            this.pictureBox2 = new System.Windows.Forms.PictureBox();
+            this.textBox1 = new System.Windows.Forms.TextBox();
             this.tabPageOutput.SuspendLayout();
             this.tabPageConfig1.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPageConfig0.SuspendLayout();
             this.tabPageConfig2.SuspendLayout();
+            this.tabPage1.SuspendLayout();
             this.SuspendLayout();
             // 
             // timerLoopSecond
@@ -183,7 +189,7 @@
             this.tabPageOutput.Controls.Add(this.buttonStop);
             this.tabPageOutput.Location = new System.Drawing.Point(0, 0);
             this.tabPageOutput.Name = "tabPageOutput";
-            this.tabPageOutput.Size = new System.Drawing.Size(240, 245);
+            this.tabPageOutput.Size = new System.Drawing.Size(232, 242);
             this.tabPageOutput.Text = "Output";
             // 
             // buttonClearLog
@@ -631,6 +637,7 @@
             this.tabControl1.Controls.Add(this.tabPageConfig1);
             this.tabControl1.Controls.Add(this.tabPageConfig2);
             this.tabControl1.Controls.Add(this.tabPageOutput);
+            this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControl1.Location = new System.Drawing.Point(0, 0);
             this.tabControl1.Name = "tabControl1";
@@ -1116,6 +1123,49 @@
             this.timerFixPositionGPS.Interval = 10000;
             this.timerFixPositionGPS.Tick += new System.EventHandler(this.timerFixPositionGPS_Tick);
             // 
+            // tabPage1
+            // 
+            this.tabPage1.BackColor = System.Drawing.Color.PaleTurquoise;
+            this.tabPage1.Controls.Add(this.textBox1);
+            this.tabPage1.Controls.Add(this.pictureBox2);
+            this.tabPage1.Controls.Add(this.btnTestCamera);
+            this.tabPage1.Controls.Add(this.btnTestScanner);
+            this.tabPage1.Location = new System.Drawing.Point(0, 0);
+            this.tabPage1.Name = "tabPage1";
+            this.tabPage1.Size = new System.Drawing.Size(240, 245);
+            this.tabPage1.Text = "TEST";
+            // 
+            // btnTestScanner
+            // 
+            this.btnTestScanner.Location = new System.Drawing.Point(7, 7);
+            this.btnTestScanner.Name = "btnTestScanner";
+            this.btnTestScanner.Size = new System.Drawing.Size(84, 31);
+            this.btnTestScanner.TabIndex = 0;
+            this.btnTestScanner.Text = "test scanner";
+            this.btnTestScanner.Click += new System.EventHandler(this.btnTestScanner_Click);
+            // 
+            // btnTestCamera
+            // 
+            this.btnTestCamera.Location = new System.Drawing.Point(7, 96);
+            this.btnTestCamera.Name = "btnTestCamera";
+            this.btnTestCamera.Size = new System.Drawing.Size(84, 31);
+            this.btnTestCamera.TabIndex = 0;
+            this.btnTestCamera.Text = "test camera";
+            this.btnTestCamera.Click += new System.EventHandler(this.btnTestCamera_Click);
+            // 
+            // pictureBox2
+            // 
+            this.pictureBox2.Location = new System.Drawing.Point(116, 96);
+            this.pictureBox2.Name = "pictureBox2";
+            this.pictureBox2.Size = new System.Drawing.Size(117, 146);
+            // 
+            // textBox1
+            // 
+            this.textBox1.Location = new System.Drawing.Point(7, 44);
+            this.textBox1.Name = "textBox1";
+            this.textBox1.Size = new System.Drawing.Size(226, 21);
+            this.textBox1.TabIndex = 2;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
@@ -1136,6 +1186,7 @@
             this.tabControl1.ResumeLayout(false);
             this.tabPageConfig0.ResumeLayout(false);
             this.tabPageConfig2.ResumeLayout(false);
+            this.tabPage1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -1230,6 +1281,11 @@
         private System.Windows.Forms.Timer timerFixPositionGPS;
         private System.Windows.Forms.RadioButton radioButtonActive;
         private System.Windows.Forms.RadioButton radioButtonPassive;
+        private System.Windows.Forms.TabPage tabPage1;
+        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.PictureBox pictureBox2;
+        private System.Windows.Forms.Button btnTestCamera;
+        private System.Windows.Forms.Button btnTestScanner;
     }
 }
 

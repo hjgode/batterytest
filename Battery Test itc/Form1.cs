@@ -1112,5 +1112,40 @@ namespace Battery_Test_itc
 
         }
 
+        private void btnTestScanner_Click(object sender, EventArgs e)
+        {
+            da.Connect();
+            da.DecodeEvent+=new DecodeAssembly.DecodeEventHandler(da_DecodeEvent1);
+            da.ScanBarcode();
+        }
+        delegate void changeTextCallback(string s);
+        void changeText(string s)
+        {
+            if (this.textBox1.InvokeRequired)
+            {
+                changeTextCallback d = new changeTextCallback(changeText);
+                this.Invoke(d, new object[] { s });
+            }
+            else
+            {
+                textBox1.Text = s;
+            }
+        }
+        void da_DecodeEvent1(object sender, DecodeEventArgs e)
+        {
+            changeText(e.sData);
+        }
+
+        private void btnTestCamera_Click(object sender, EventArgs e)
+        {
+            ca.Connect(pictureBox2, null, null);
+            ca.CameraEvent += new CameraAssembly.CameraAssembly.CameraEventHandler(ca_CameraEvent1);
+            ca.StartPreview();
+        }
+
+        void ca_CameraEvent1(object s, CameraEventArgs args)
+        {
+            
+        }
     }
 }
