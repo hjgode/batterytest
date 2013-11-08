@@ -1138,6 +1138,10 @@ namespace Battery_Test_itc
 
         private void btnTestCamera_Click(object sender, EventArgs e)
         {
+            ca.Disconnect();
+            ca.CameraEvent -= ca_CameraEvent;
+            ca.Dispose();
+            ca = new CameraAssembly.CameraAssembly();
             ca.Connect(pictureBox2, null, null);
             ca.CameraEvent += new CameraAssembly.CameraAssembly.CameraEventHandler(ca_CameraEvent1);
             ca.StartPreview();

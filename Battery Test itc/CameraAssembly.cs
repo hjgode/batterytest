@@ -7,13 +7,15 @@ using System.Threading;
 
 using Intermec.Multimedia;
 
+using System.Windows.Forms;
+
 namespace CameraAssembly
 {
-    class CameraAssembly:ICameraAssembly,IDisposable
+    class CameraAssembly:Control,ICameraAssembly,IDisposable
     {
         static Intermec.Multimedia.Camera cam;
         Camera.Resolution currentRes;
-        Timer timer1;
+        System.Threading.Timer timer1;
         int m_iTimeout = 3000;
         System.Windows.Forms.PictureBox m_pb = null;
 
@@ -27,7 +29,7 @@ namespace CameraAssembly
             addLog("CameraAssembly started");
             TimerCallback timerDelegate = new TimerCallback(timerCallback);
             //init the timer but do not start it
-            timer1 = new Timer(timerDelegate, null, System.Threading.Timeout.Infinite, m_iTimeout);
+            timer1 = new System.Threading.Timer(timerDelegate, null, System.Threading.Timeout.Infinite, m_iTimeout);
         }
 
         public void Dispose()
@@ -71,7 +73,16 @@ namespace CameraAssembly
             if (cam == null)
             {
                 addLog("creat new cam");
-                cam = new Camera(m_pb, Camera.ImageResolutionType.Medium);
+                Camera.ImageResolutionType viewFinderResolution = Camera.ImageResolutionType.Medium;
+                cam = new Camera(m_pb, viewFinderResolution);
+                if (cam.Features.Torch.Available)
+                {
+                    cam.Features.Torch.PresetValue = Camera.Feature.TorchFeature.TorchPresets.Off;
+                }
+                if (cam.Features.Flash.Available)
+                {
+                    cam.Features.Flash.CurrentValue = cam.Features.Flash.MaxValue;
+                }
             }
             else
             {
@@ -113,8 +124,13 @@ namespace CameraAssembly
 
             addLog("StopCAM() done");
         }
+        public void Connect(ref System.Windows.Forms.PictureBox pb, int iTimeout, object o2)
+        {
+            m_iTimeout = iTimeout;
+            this.Connect(ref pb, null, null);
+        }
 
-        public void Connect(System.Windows.Forms.PictureBox pb, object o1, object o2)
+        public void Connect(ref System.Windows.Forms.PictureBox pb, object o1, object o2)
         {
             addLog("Connect...");
             try
@@ -192,12 +208,13 @@ namespace CameraAssembly
             addLog("StartPreview...");
             if (cam == null)
             {
+                startCAM();
                 addLog("StartPreview: no cam");
                 return;
             }
             addLog("StartPreview: start streaming");
+            cam.PictureBoxUpdate = Camera.PictureBoxUpdateType.Center;
             cam.Streaming = true;
-            cam.PictureBoxUpdate = Camera.PictureBoxUpdateType.AdjustToFrameSize;
             addLog("StartPreview activate timer");
             timer1.Change(m_iTimeout, m_iTimeout);
             addLog("StartPreview done.");
@@ -241,5 +258,6 @@ namespace CameraAssembly
         {
             System.Diagnostics.Debug.WriteLine("CameraAssembly: "+s);
         }
+
     }
 }

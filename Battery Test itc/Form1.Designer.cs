@@ -113,14 +113,14 @@
             this.numericUpDownTourCycleScanBarcodes = new System.Windows.Forms.NumericUpDown();
             this.label45 = new System.Windows.Forms.Label();
             this.numericUpDownTourLaufzeitStunden = new System.Windows.Forms.NumericUpDown();
+            this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.pictureBox2 = new System.Windows.Forms.PictureBox();
+            this.btnTestCamera = new System.Windows.Forms.Button();
+            this.btnTestScanner = new System.Windows.Forms.Button();
             this.timerPositionGPS = new System.Windows.Forms.Timer();
             this.timerCycleInterval = new System.Windows.Forms.Timer();
             this.timerFixPositionGPS = new System.Windows.Forms.Timer();
-            this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.btnTestScanner = new System.Windows.Forms.Button();
-            this.btnTestCamera = new System.Windows.Forms.Button();
-            this.pictureBox2 = new System.Windows.Forms.PictureBox();
-            this.textBox1 = new System.Windows.Forms.TextBox();
             this.tabPageOutput.SuspendLayout();
             this.tabPageConfig1.SuspendLayout();
             this.tabControl1.SuspendLayout();
@@ -1110,19 +1110,6 @@
             0,
             0});
             // 
-            // timerPositionGPS
-            // 
-            this.timerPositionGPS.Tick += new System.EventHandler(this.timerPositionGPS_Tick);
-            // 
-            // timerCycleInterval
-            // 
-            this.timerCycleInterval.Tick += new System.EventHandler(this.timerCycleInterval_Tick);
-            // 
-            // timerFixPositionGPS
-            // 
-            this.timerFixPositionGPS.Interval = 10000;
-            this.timerFixPositionGPS.Tick += new System.EventHandler(this.timerFixPositionGPS_Tick);
-            // 
             // tabPage1
             // 
             this.tabPage1.BackColor = System.Drawing.Color.PaleTurquoise;
@@ -1135,14 +1122,19 @@
             this.tabPage1.Size = new System.Drawing.Size(240, 245);
             this.tabPage1.Text = "TEST";
             // 
-            // btnTestScanner
+            // textBox1
             // 
-            this.btnTestScanner.Location = new System.Drawing.Point(7, 7);
-            this.btnTestScanner.Name = "btnTestScanner";
-            this.btnTestScanner.Size = new System.Drawing.Size(84, 31);
-            this.btnTestScanner.TabIndex = 0;
-            this.btnTestScanner.Text = "test scanner";
-            this.btnTestScanner.Click += new System.EventHandler(this.btnTestScanner_Click);
+            this.textBox1.Location = new System.Drawing.Point(7, 44);
+            this.textBox1.Name = "textBox1";
+            this.textBox1.Size = new System.Drawing.Size(226, 21);
+            this.textBox1.TabIndex = 2;
+            // 
+            // pictureBox2
+            // 
+            this.pictureBox2.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.pictureBox2.Location = new System.Drawing.Point(116, 96);
+            this.pictureBox2.Name = "pictureBox2";
+            this.pictureBox2.Size = new System.Drawing.Size(117, 146);
             // 
             // btnTestCamera
             // 
@@ -1153,18 +1145,27 @@
             this.btnTestCamera.Text = "test camera";
             this.btnTestCamera.Click += new System.EventHandler(this.btnTestCamera_Click);
             // 
-            // pictureBox2
+            // btnTestScanner
             // 
-            this.pictureBox2.Location = new System.Drawing.Point(116, 96);
-            this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(117, 146);
+            this.btnTestScanner.Location = new System.Drawing.Point(7, 7);
+            this.btnTestScanner.Name = "btnTestScanner";
+            this.btnTestScanner.Size = new System.Drawing.Size(84, 31);
+            this.btnTestScanner.TabIndex = 0;
+            this.btnTestScanner.Text = "test scanner";
+            this.btnTestScanner.Click += new System.EventHandler(this.btnTestScanner_Click);
             // 
-            // textBox1
+            // timerPositionGPS
             // 
-            this.textBox1.Location = new System.Drawing.Point(7, 44);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(226, 21);
-            this.textBox1.TabIndex = 2;
+            this.timerPositionGPS.Tick += new System.EventHandler(this.timerPositionGPS_Tick);
+            // 
+            // timerCycleInterval
+            // 
+            this.timerCycleInterval.Tick += new System.EventHandler(this.timerCycleInterval_Tick);
+            // 
+            // timerFixPositionGPS
+            // 
+            this.timerFixPositionGPS.Interval = 10000;
+            this.timerFixPositionGPS.Tick += new System.EventHandler(this.timerFixPositionGPS_Tick);
             // 
             // Form1
             // 
