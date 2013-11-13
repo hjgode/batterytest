@@ -187,7 +187,7 @@ namespace Battery_Test_itc
             this.testPlanType = TestPlanType.BELADE; // V1.3.2
             this.menuItemStart.Enabled = false;
             this.stopTest = false;
-            this.tabControl1.SelectedIndex = this.tabControl1.TabPages.Count - 1;
+            this.tabControl1.SelectedIndex = this.tabControl1.TabPages.Count - 2;
             this.menuItemExit.Enabled = false;
 
             this.startTime = DateTime.Now;
@@ -264,7 +264,7 @@ namespace Battery_Test_itc
             this.testPlanType = TestPlanType.TOUR; // V1.3.2
             this.menuItemStart.Enabled = false;
             this.stopTest = false;
-            this.tabControl1.SelectedIndex = this.tabControl1.TabPages.Count - 1;
+            this.tabControl1.SelectedIndex = this.tabControl1.TabPages.Count - 2;
             this.menuItemExit.Enabled = false;
 
             this.startTime = DateTime.Now;
