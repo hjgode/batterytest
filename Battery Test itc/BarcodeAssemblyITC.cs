@@ -163,7 +163,7 @@ namespace DecodeAssemblyITC
             bcr.ThreadedRead(false); //only request one scan
             bcr.ScannerEnable = true;
             bcr.ScannerOn = true;
-            timer1.Change(m_iTimeout, m_iTimeout);
+            timer1.Change(m_iTimeout, 0);   //issue one timeout
             //Thread thReadThread = new Thread(new ThreadStart(readThread));
             //thReadThread.Start();
             addLog("ScanBarcode end");

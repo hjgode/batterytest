@@ -67,50 +67,55 @@ namespace CameraAssembly
             cam = new Camera(Intermec.Multimedia.Camera.ImageResolutionType.Medium);
         }
         
-        void startCAM()
+        Boolean startCAM()
         {
             addLog("startCAM()");
-            if (cam == null)
+            try
             {
-                addLog("creat new cam");
-                Camera.ImageResolutionType viewFinderResolution = Camera.ImageResolutionType.Medium;
-                cam = new Camera(m_pb, viewFinderResolution);
-                if (cam.Features.Torch.Available)
+                if (cam == null)
                 {
-                    cam.Features.Torch.PresetValue = Camera.Feature.TorchFeature.TorchPresets.Off;
+                    addLog("creat new cam");
+                    Camera.ImageResolutionType viewFinderResolution = Camera.ImageResolutionType.Medium;
+                    cam = new Camera(m_pb, viewFinderResolution);
+                    if (cam.Features.Torch.Available)
+                    {
+                        cam.Features.Torch.PresetValue = Camera.Feature.TorchFeature.TorchPresets.Off;
+                    }
+                    if (cam.Features.Flash.Available)
+                    {
+                        cam.Features.Flash.CurrentValue = cam.Features.Flash.MaxValue;
+                    }
                 }
-                if (cam.Features.Flash.Available)
+                else
                 {
-                    cam.Features.Flash.CurrentValue = cam.Features.Flash.MaxValue;
+                    addLog("using existing cam");
                 }
+                return true;
             }
-            else
-            {
-                addLog("using existing cam");
+            catch(CameraException ex){
+                addLog("CameraException: " + ex.Message);
             }
+            catch(Exception ex){
+                addLog("Exception: " + ex.Message);
+            }
+            return false;
         }
         
         void stopCAM()
         {
             addLog("StopCAM()");
-            if (cam == null)
+            if (cam != null)
             {
-                addLog("StopCAM(): no cam");
-                startCAM();
-                //return;
-            }
-            
-            if(true)
-            {
-                cam.Streaming = false;
-                cam.PictureBoxUpdate = Camera.PictureBoxUpdateType.None;
-                if (cam.Features.Torch.Available)
-                    cam.Features.Torch.CurrentValue = cam.Features.Torch.MinValue;
+                addLog("stopCAM(): cam is not null");
+                StopPreview();
+                //cam.Streaming = false;
+                //cam.PictureBoxUpdate = Camera.PictureBoxUpdateType.None;
             }
             try
             {
                 //we have to set the event, otherwise the main app will never stop!
                 CameraEventArgs cea = new CameraEventArgs(CameraTaskCodes.ImageCaptureComplete);
+                addLog("stopCAM(): fire event CaptureComplete");
                 doHandleEvent(cea);
                 Thread.Sleep(200);
             }
@@ -118,11 +123,46 @@ namespace CameraAssembly
             {
                 addLog("stopCAM(): Exception for doHandleEvent(): " + ex.Message);
             }
-            //addLog("StopCAM(): DeInit cam");            
-            //cam.Dispose();
-            //cam = null;
+            addLog("StopCAM(): DeInit cam");
 
+            //cam MUST be disposed to have barcoding work!
+            if(cam!=null)
+                camDispose(cam);// cam.Dispose();    //control invoke????
+            if (cam != null)
+            {
+                addLog("stopCAM(): setting cam = null");
+                cam = null;
+            }
             addLog("StopCAM() done");
+        }
+        delegate void setImageCallback(PictureBox pb, System.Drawing.Bitmap bmp);
+        public void setImage(PictureBox pb, System.Drawing.Bitmap bmp)
+        {
+            if (this.InvokeRequired)
+            {
+                setImageCallback d = new setImageCallback(setImage);
+                this.Invoke(d, new object[] { pb, bmp });
+            }
+            else
+            {
+                pb.Image = bmp;
+            }
+        }
+        delegate void camDisposeCallback(Intermec.Multimedia.Camera obj);
+        public void camDispose(Intermec.Multimedia.Camera obj)
+        {
+            // InvokeRequired required compares the thread ID of the
+            // calling thread to the thread ID of the creating thread.
+            // If these threads are different, it returns true.
+            if (this.InvokeRequired)
+            {
+                camDisposeCallback d = new camDisposeCallback(camDispose);
+                this.Invoke(d, new object[] { obj });
+            }
+            else
+            {
+                obj.Dispose();
+            }
         }
         public void Connect(ref System.Windows.Forms.PictureBox pb, int iTimeout, object o2)
         {
@@ -135,17 +175,8 @@ namespace CameraAssembly
             addLog("Connect...");
             try
             {
+                m_pb = pb; // Added so that m_pb is not null when startCAM() instantiates the camera
                 startCAM();
-                //if (cam == null)
-                //{
-                //    m_pb = pb;
-                //    cam = new Camera(pb, Camera.ImageResolutionType.Lowest);
-                //    addLog("Connect: created new cam");
-                //}
-                //else
-                //{
-                //    addLog("Connect: using existing cam...");
-                //}
             }
             catch (Exception) {
                 //we have to set the event, otherwise the main app will never stop!
@@ -209,8 +240,7 @@ namespace CameraAssembly
             if (cam == null)
             {
                 startCAM();
-                addLog("StartPreview: no cam");
-                return;
+                addLog("StartPreview: new cam");
             }
             addLog("StartPreview: start streaming");
             cam.PictureBoxUpdate = Camera.PictureBoxUpdateType.Center;
@@ -228,7 +258,13 @@ namespace CameraAssembly
                 return;
             }
             cam.Streaming = false;
+            if (cam.Features.Torch.Available)
+                cam.Features.Torch.CurrentValue = cam.Features.Torch.MinValue;
             timer1.Change(Timeout.Infinite, m_iTimeout);
+
+            if (m_pb != null)
+                setImage(m_pb, null);    //control invoke????
+
             addLog("StopPreview done.");
         }
 

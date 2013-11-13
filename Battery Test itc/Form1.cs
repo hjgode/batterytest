@@ -569,7 +569,7 @@ namespace Battery_Test_itc
 #if HSM
                     this.ca.Connect(this.pictureBox1.Handle, null, null);
 #else
-                    this.ca.Connect(this.pictureBox1, null, null);
+                    this.ca.Connect(ref this.pictureBox1, null, null);
 #endif
                     long resolutionSetting;
                     this.ca.GetResolutionCount(out resolutionSetting);
@@ -1114,7 +1114,11 @@ namespace Battery_Test_itc
 
         private void btnTestScanner_Click(object sender, EventArgs e)
         {
+            ca.Disconnect();
+
+            da.Disconnect();
             da.Connect();
+            da.ScanTimeout = 15000; //15 seconds
             da.DecodeEvent+=new DecodeAssembly.DecodeEventHandler(da_DecodeEvent1);
             da.ScanBarcode();
         }
@@ -1138,11 +1142,13 @@ namespace Battery_Test_itc
 
         private void btnTestCamera_Click(object sender, EventArgs e)
         {
+            da.Disconnect();
+
             ca.Disconnect();
             ca.CameraEvent -= ca_CameraEvent;
             ca.Dispose();
             ca = new CameraAssembly.CameraAssembly();
-            ca.Connect(pictureBox2, null, null);
+            ca.Connect(ref pictureBox2, null, null);
             ca.CameraEvent += new CameraAssembly.CameraAssembly.CameraEventHandler(ca_CameraEvent1);
             ca.StartPreview();
         }
