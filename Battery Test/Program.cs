@@ -3,7 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Windows.Forms;
 
-namespace Battery_Test
+namespace Trans_o_flex_Battery_Test
 {
     static class Program
     {

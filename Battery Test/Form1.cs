@@ -12,10 +12,14 @@ using System.Windows.Forms;
 using HSM.Embedded.Decoding;
 using HSM.Embedded.Camera;
 using HSM.Embedded.Utility;
+using HSM.Embedded.Wireless;
+using HSM.Embedded.Wireless.Network;
+using HSM.Embedded.WirelessAssembly;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
+using HANDLE = System.IntPtr;
 
-namespace Battery_Test
+namespace Trans_o_flex_Battery_Test
 {
     public partial class Form1 : Form
     {
@@ -31,6 +35,52 @@ namespace Battery_Test
         static extern bool SetSystemPowerState(IntPtr pwdSystemState, UInt32 StateFlags, UInt32 Options);
 
         const UInt32 POWER_STATE_ON = (0x00010000);        // on state
+
+        [DllImport("coredll.dll", SetLastError = true, CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Auto)]
+        public static extern HANDLE CreateEvent(HANDLE lpEventAttributes, [In, MarshalAs(UnmanagedType.Bool)] bool bManualReset, [In, MarshalAs(UnmanagedType.Bool)] bool bIntialState, [In, MarshalAs(UnmanagedType.BStr)] string lpName);
+
+        [DllImport("coredll.dll", SetLastError = true, CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Auto)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool CloseHandle(HANDLE hObject);
+
+
+        [DllImport("coredll.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool EventModify(HANDLE hEvent, [In, MarshalAs(UnmanagedType.U4)] int dEvent);
+        public enum EventFlags
+        {
+            PULSE = 1,
+            RESET = 2,
+            SET = 3
+        }
+
+        private static bool SetEvent(HANDLE hEvent)
+        {
+            return EventModify(hEvent, (int)EventFlags.SET);
+        }
+
+
+        [DllImport("CoreDLL.dll")]
+        public static extern int CeRunAppAtTime(string application, SystemTime startTime);
+
+        [DllImport("CoreDLL.dll")]
+        public static extern int FileTimeToSystemTime(ref long lpFileTime, SystemTime lpSystemTime);
+
+        [DllImport("CoreDLL.dll")]
+        public static extern int FileTimeToLocalFileTime(ref long lpFileTime, ref long lpLocalFileTime);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public class SystemTime
+        {
+            public ushort wYear;
+            public ushort wMonth;
+            public ushort wDayOfWeek;
+            public ushort wDay;
+            public ushort wHour;
+            public ushort wMinute;
+            public ushort wSecond;
+            public ushort wMilliseconds;
+        }
 
         // The application is build around a state machine, in order to separate the various tests where needed
         // There are several tests which can be done:
@@ -62,13 +112,22 @@ namespace Battery_Test
 
         private enum TestPlanType
         {
-            BELADE,
-            TOUR
+            NONE,
+            BELADE_PLAN,
+            BELADE_EXEC,
+            TOUR_PLAN,
+            TOUR_EXEC,
+            RUHE_PLAN,
+            RUHE_EXEC,
+            DONE
         }
+
+
 
         private string logFile;
         private DateTime startTime;
         private TimeSpan timeSpan;
+        private TimeSpan testSpan;
         private int testHours;
         private int startLevel;
         private int lastLevel;
@@ -88,28 +147,82 @@ namespace Battery_Test
         private TaskTestState stateTourCycle;
         private int numTourCycleScanBarcodes;
         private bool stopTest = false;
+        private bool skipPhase = false;
         private int timeoutScanBarcode;
         private int timeoutSnapPhoto;
         private GPS gps = null;
         private string gps_location = string.Empty;
+        private bool deviceInUnattended = false;
+        private bool complained = false;
 
         private DecodeAssembly da = new DecodeAssembly();
         private CameraAssembly ca = new CameraAssembly();
+        private WirelessManager wim = new WirelessManager();
+        private ConnMgr cmr = new ConnMgr();
+
+        public const int UNATTENDED_ON = 1;
+        public const int POWER_FORCE = 0x1000;
+        public const int UNATTENDED_OFF = 0;
+
+        public enum PowerMode
+        {
+            ReevaluateStat = 0x0001,
+            PowerChange = 0x0002,
+            UnattendedMode = 0x0003,
+            SuspendKeyOrPwrButtonPressed = 0x0004,
+            SuspendKeyReleased = 0x0005,
+            AppButtonPressed = 0x0006
+        }
+
+        [DllImport("CoreDll.dll")]
+        public static extern int PowerPolicyNotify(PowerMode powerMode, int flags);
+
+        public enum DeviceState : int
+        {
+            Unspecified = -1,
+            FullOn = 0,
+            LowOn,
+            StandBy,
+            Sleep,
+            Off,
+            Maximum
+        }
+
+        [DllImport("CoreDll.DLL")]
+        public static extern IntPtr SetPowerRequirement(String pvDevice, int DeviceState, int DeviceFlags, IntPtr pvSystemState, int StateFlags);
+
+        [DllImport("CoreDll.DLL")]
+        public static extern uint ReleasePowerRequirement(IntPtr hPowerReq);  
+ 
+          
+ 
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            this.doPresetTour1();
             this.doPresetBelade1();
+            this.doPresetTour1();
+            this.testPlanType = TestPlanType.NONE;
+            bool state = false;
+            WirelessManager.GetWLANState(ref state);
+            this.checkBoxTestWLAN.Checked = state;
+            WirelessManager.GetWWANState(ref state);
+            this.checkBoxTestWWAN.Checked = state;
 
             // this.textBoxDataServer.Text = dd;
             this.textBoxDataServer.Text = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "FTPServer", @"127.0.0.1");
             this.textBoxDataBenutzer.Text = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "FTPUsername", @"ftp");
             this.textBoxDataKennwort.Text = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "FTPPassword", @"ftp");
-            
+
+            // V1.5.0
+            this.textBoxGPRSEntry.Text = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "GPRSEntry", @"GPRS");
+            this.textBoxGPRSAPN.Text = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "GPRSAPN", @"internet");
+            this.textBoxGPRSBenutzer.Text = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "GPRSUsername", @"");
+            this.textBoxGPRSKennwort.Text = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "GPRSPassword", @"");
+
             // V1.4.0
-            this.radioButtonPassive.Checked = ((string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "FTPPassive", true.ToString())==true.ToString());
+            this.radioButtonPassive.Checked = ((string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "FTPPassive", true.ToString()) == true.ToString());
             this.doSetActivePassive();
-            
+
 
             try
             { // disconnect in case the assembly autoconnects are create instance
@@ -152,9 +265,11 @@ namespace Battery_Test
 
         private void doRefreshOutputStatusDisplay()
         {
+            this.labelCurrentPhase.Text = this.testPlanType.ToString();
             int akkuLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
             this.labelStartzeit.Text = this.startTime.ToString("HH:mm:ss");
-            this.labelTestdauer.Text = this.timeSpan.ToString().Split('.')[0];
+            TimeSpan localSpan = DateTime.Now.Subtract(this.startTime);
+            this.labelTestdauer.Text = localSpan.ToString().Split('.')[0];
             this.labelAnzahlBarcodeScans.Text = this.numScanBarcodes.ToString();
             this.labelAnzahlPhotosSnapped.Text = this.numSnapPhotos.ToString();
             this.labelFTPBytesSent.Text = this.numTotalDataBytes.ToString();
@@ -167,26 +282,103 @@ namespace Battery_Test
             }
         }
 
+
+        private void doStartRuhe()
+        {
+            Form1.SystemIdleTimerReset();
+            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+
+            // V 1.5.3
+            this.complained = false;
+
+            this.startTime = DateTime.Now;
+            this.timeSpan = DateTime.Now.Subtract(this.startTime); //V1.5.1
+            this.logFile = @"\My Documents\trans-o-flex-" + this.startTime.ToString("yyyy-MM-dd_HH-mm-ss") + "-Ruhe.log";
+            this.textBoxLog.Text = string.Empty;
+
+            WirelessManager.SetWWANState(false);
+            WirelessManager.SetWLANState(false);
+
+            this.startLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
+            this.lastLevel = this.startLevel;
+            this.numTotalDataBytes = 0;
+
+            this.testHours = (int)(this.numericUpDownRuheLaufzeitStunden.Value); // V1.3.0 use global var
+            // V1.5.2
+            this.testSpan = new TimeSpan(this.testHours, (int)(this.numericUpDownRuheLaufzeitMinuten.Value), 0);
+            this.doLog("Testdauer Ruhephase: " + this.testHours.ToString() + " Stunde(n)");
+            this.doLog("Akku " + this.startLevel.ToString() + "%");
+
+            this.doLog("Test Ruhe gestart");
+            this.testPlanType = TestPlanType.RUHE_EXEC;
+
+            // V1.5.2
+            if (this.radioButtonRuheSuspend.Checked)
+            {
+                // if we use real suspend, we disable auto timeouts because we will control it
+                this.doSetTimeouts(0, 0, 0, 0, 0, 0);
+            }
+            else
+            {
+                // if we use Pseudo-suspend (unattended mode) device will go into suspend after 60 seconds
+                this.doSetTimeouts(0, 0, 0, 0, 0, 0);
+                deviceInUnattended = false;
+            }
+        }
+
         // Initiate the "Belade" Test
 
         private void doStartBelade()
         {
-            this.testPlanType = TestPlanType.BELADE; // V1.3.2
-            this.menuItemStart.Enabled = false;
-            this.stopTest = false;
-            this.tabControl1.SelectedIndex = this.tabControl1.TabPages.Count - 1;
-            this.menuItemExit.Enabled = false;
+            Form1.SystemIdleTimerReset();
+            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
 
+            // V 1.5.3
+            this.complained = false;
+
+            // V1.5.2
+            // devide should not go into suspend, but just in case
+            bool result = (PowerPolicyNotify(PowerMode.UnattendedMode, UNATTENDED_ON) != 0);
+
+            
             this.startTime = DateTime.Now;
-            this.logFile = @"\My Documents\trans-o-flex-" + this.startTime.ToString("yyyy-MM-dd_HH-mm-ss") + ".log";
+            this.timeSpan = DateTime.Now.Subtract(this.startTime); //V1.5.1
+            this.logFile = @"\My Documents\trans-o-flex-" + this.startTime.ToString("yyyy-MM-dd_HH-mm-ss") + "-Belade.log";
             this.textBoxLog.Text = string.Empty;
+
+            // V1.5.4 swapped, used wrong 
+            WirelessManager.SetWWANState(this.radioButtonBeladeGPRS.Checked);
+            WirelessManager.SetWLANState(this.radioButtonBeladeWIFI.Checked);
+
+            if (this.radioButtonBeladeGPRS.Checked)
+            {
+                this.textBoxLog.Text = "Attaching to GPRS ...";
+                Application.DoEvents();
+                if (!this.cmr.Connected)
+                {
+                    this.cmr.Connect(this.textBoxGPRSEntry.Text,
+                        ConnMgr.ConnectionMode.Asynchronous,
+                        this.textBoxGPRSBenutzer.Text,
+                        this.textBoxGPRSKennwort.Text,
+                        this.textBoxGPRSAPN.Text);
+
+                    int maxWait = 30;
+                    while (!cmr.Connected && maxWait-- > 0)
+                    {
+                        Thread.Sleep(1000);
+                    }
+                }
+            }
+
 
             this.startLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
             this.lastLevel = this.startLevel;
             this.numTotalDataBytes = 0;
 
             this.testHours = (int)(this.numericUpDownBeladeLaufzeitStunden.Value); // V1.3.0 use global var
-            this.doLog("Testdauer " + this.testHours.ToString() + " Stunden");
+            // V1.5.2
+            this.testSpan = new TimeSpan(this.testHours, 0, 0);
+            this.doLog("Testdauer Beladephase: " + this.testHours.ToString() + " Stunde(n)");
             this.doLog("Akku " + this.startLevel.ToString() + "%");
 
             if (this.testHours > 0)
@@ -194,30 +386,31 @@ namespace Battery_Test
                 if ((int)(this.numericUpDownBeladeScanBarcodes.Value) > 0)
                 {
                     int secondsNextScan = this.testHours * 3600 / (int)(this.numericUpDownBeladeScanBarcodes.Value);
-                    this.timerScanBarcode.Interval = secondsNextScan * 1000;
-                    this.doLog("Scan jede " + secondsNextScan.ToString() + " Sekunden");
+                    this.timerPlanScan.Interval = secondsNextScan * 1000;
+                    this.doLog("Scan jede " + secondsNextScan.ToString() + " Sekunde(n)");
                     this.timeoutScanBarcode = (int)(this.numericUpDownBeladeScanBarcodeDurationSekunden.Value) * 1000;
                 }
 
                 if ((int)(this.numericUpDownBeladeSnapPhotos.Value) > 0)
                 {
                     int secondsNextPhoto = this.testHours * 3600 / (int)(this.numericUpDownBeladeSnapPhotos.Value);
-                    this.timerSnapPhoto.Interval = secondsNextPhoto * 1000;
+                    this.timerPlanPhoto.Interval = secondsNextPhoto * 1000;
                     this.timeoutSnapPhoto = (int)(this.numericUpDownBeladeSnapPhotoDurationSekunden.Value) * 1000;
-                    this.timerPhotoSnap.Interval = this.timeoutSnapPhoto;
-                    this.doLog("Photo jede " + secondsNextPhoto.ToString() + " Sekunden");
+                    this.timerExecPhoto.Interval = this.timeoutSnapPhoto;
+                    this.doLog("Photo jede " + secondsNextPhoto.ToString() + " Sekunde(n)");
                 }
 
                 if ((int)(this.numericUpDownBeladeFTPSessions.Value) > 0)
                 {
                     int secondsNextData = this.testHours * 3600 / (int)(this.numericUpDownBeladeFTPSessions.Value);
                     this.numSendDataBytes = (int)(this.numericUpDownBeladeFTPSessionSize.Value);  // V1.2.0
-                    this.timerFTPSession.Interval = secondsNextData * 1000;
-                    this.doLog("Data jede " + secondsNextData.ToString() + " Sekunden");
+                    this.timerPlanData.Interval = secondsNextData * 1000;
+                    this.doLog("Data jede " + secondsNextData.ToString() + " Sekunde(n)");
                 }
             }
 
             this.doLog("Test Belade gestart");
+            this.testPlanType = TestPlanType.BELADE_EXEC; // V1.5.0
 
             this.numScanBarcodes = 0;
             this.numSnapPhotos = 0;
@@ -230,17 +423,19 @@ namespace Battery_Test
             this.stateTourCycle = TaskTestState.IDLE;
             this.stateGPSPosition = TaskTestState.IDLE; // V1.3.0
 
-            this.timerLoopSecond.Enabled = true;
+            // this.timerLoopSecond.Enabled = true; // V1.5.0
             if (this.testHours > 0)
             {
-                this.timerScanBarcode.Enabled = ((int)(this.numericUpDownBeladeScanBarcodes.Value) > 0);
-                this.timerSnapPhoto.Enabled = ((int)(this.numericUpDownBeladeSnapPhotos.Value) > 0);
-                this.timerFTPSession.Enabled = ((int)(this.numericUpDownBeladeFTPSessions.Value) > 0);
-                this.timerPositionGPS.Enabled = false; // V1.3.0
-                this.timerCycleInterval.Enabled = false; // V1.3.0
+                this.timerPlanScan.Enabled = ((int)(this.numericUpDownBeladeScanBarcodes.Value) > 0);
+                this.timerPlanPhoto.Enabled = ((int)(this.numericUpDownBeladeSnapPhotos.Value) > 0);
+                this.timerPlanData.Enabled = ((int)(this.numericUpDownBeladeFTPSessions.Value) > 0);
+                this.timerPlanGPS.Enabled = false; // V1.3.0
+                this.timerPlanTourCycle.Enabled = false; // V1.3.0
             }
 
-            this.buttonStop.Enabled = true;
+            
+            // V1.5.0 done at global test start
+            // this.buttonStop.Enabled = true;
         }
 
         // Initiate the "Tour" Test
@@ -248,26 +443,53 @@ namespace Battery_Test
 
         private void doStartTour()
         {
-            this.testPlanType = TestPlanType.TOUR; // V1.3.2
-            this.menuItemStart.Enabled = false;
-            this.stopTest = false;
-            this.tabControl1.SelectedIndex = this.tabControl1.TabPages.Count - 1;
-            this.menuItemExit.Enabled = false;
+            Form1.SystemIdleTimerReset();
+            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+
+            // V 1.5.3
+            this.complained = false;
+
+            // V1.5.2
+            bool result = (PowerPolicyNotify(PowerMode.UnattendedMode, UNATTENDED_ON) != 0);  
+
 
             this.startTime = DateTime.Now;
-            this.logFile = @"\My Documents\trans-o-flex-" + this.startTime.ToString("yyyy-MM-dd_HH-mm-ss") + ".log";
+            this.timeSpan = DateTime.Now.Subtract(this.startTime); //V1.5.1
+            this.logFile = @"\My Documents\trans-o-flex-" + this.startTime.ToString("yyyy-MM-dd_HH-mm-ss") + "-Tour.log";
             this.textBoxLog.Text = string.Empty;
+
+            WirelessManager.SetWLANState(false);
+            WirelessManager.SetWWANState(true);
+
+            this.textBoxLog.Text = "Attaching to GPRS ...";
+            Application.DoEvents();
+            if (!this.cmr.Connected)
+            {
+                this.cmr.Connect(this.textBoxGPRSEntry.Text,
+                    ConnMgr.ConnectionMode.Asynchronous,
+                    this.textBoxGPRSBenutzer.Text,
+                    this.textBoxGPRSKennwort.Text,
+                    this.textBoxGPRSAPN.Text);
+
+                int maxWait = 30;
+                while (!cmr.Connected && maxWait-- > 0)
+                {
+                    Thread.Sleep(1000);
+                }
+            }
 
             this.startLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
             this.lastLevel = this.startLevel;
             this.numTotalDataBytes = 0;
 
             this.testHours = (int)(this.numericUpDownTourLaufzeitStunden.Value); // V1.3.0 use global var
-            this.doLog("Testdauer " + this.testHours.ToString() + " Stunden");
+            // V1.5.2
+            this.testSpan = new TimeSpan(this.testHours, 0, 0);
+            this.doLog("Testdauer Tourphase: " + this.testHours.ToString() + " Stunde(n)");
             this.doLog("Akku " + this.startLevel.ToString() + "%");
 
             this.gps_location = "-/-";
-            this.gps = new GPS("SWI6:",4800);
+            this.gps = new GPS("SWI6:", 4800);
             // this.gps.OpenComPort();
             this.gps.OnGPSDateEventHandler += new GPS.GPSDateEventHandler(gps_OnGPSDateEventHandler);
 
@@ -276,37 +498,49 @@ namespace Battery_Test
                 if ((int)(this.numericUpDownTourCycleIntervalMinuten.Value) > 0)
                 {
                     int secondsNextScan = (int)(this.numericUpDownTourCycleIntervalMinuten.Value) * 60;
-                    this.timerCycleInterval.Interval = secondsNextScan * 1000;
-                    this.doLog("Interval jede " + secondsNextScan.ToString() + " Sekunden");
+                    this.timerPlanTourCycle.Interval = secondsNextScan * 1000;
+                    this.doLog("Interval jede " + secondsNextScan.ToString() + " Sekunde(n)");
                     this.timeoutScanBarcode = (int)(this.numericUpDownTourCycleScanBarcodeDurationSekunden.Value) * 1000;
+
+                    int secondsDisplayOn = (int)(this.numericUpDownTourCycleDisplayAn.Value) * 60;
+                    // V1.5.2
+                    this.doSetTimeouts(0, 0, 0, 0, 0, 0);
+
+                    // V1.5.2
+                    this.timerManageUnattended.Interval = secondsDisplayOn * 1000;
+                    this.timerManageUnattended.Enabled = true;
+
+                    this.doLog("Display an " + secondsDisplayOn.ToString() + " Sekunde(n)");
+
                 }
 
                 if ((int)(this.numericUpDownTourSnapPhotos.Value) > 0)
                 {
                     int secondsNextPhoto = this.testHours * 3600 / (int)(this.numericUpDownTourSnapPhotos.Value);
-                    this.timerSnapPhoto.Interval = secondsNextPhoto * 1000;
+                    this.timerPlanPhoto.Interval = secondsNextPhoto * 1000;
                     this.timeoutSnapPhoto = (int)(this.numericUpDownTourSnapPhotoDurationSekunden.Value) * 1000;
-                    this.timerPhotoSnap.Interval = this.timeoutSnapPhoto;
-                    this.doLog("Photo jede " + secondsNextPhoto.ToString() + " Sekunden");
+                    this.timerExecPhoto.Interval = this.timeoutSnapPhoto;
+                    this.doLog("Photo jede " + secondsNextPhoto.ToString() + " Sekunde(n)");
                 }
 
                 if ((int)(this.numericUpDownTourFTPSessionIntervalSekunden.Value) > 0)
                 {
                     int secondsNextData = (int)(this.numericUpDownTourFTPSessionIntervalSekunden.Value);
                     this.numSendDataBytes = (int)(this.numericUpDownTourFTPSessionSize.Value); // V1.2.0
-                    this.timerFTPSession.Interval = secondsNextData * 1000;
-                    this.doLog("Data jede " + secondsNextData.ToString() + " Sekunden");
+                    this.timerPlanData.Interval = secondsNextData * 1000;
+                    this.doLog("Data jede " + secondsNextData.ToString() + " Sekunde(n)");
                 }
 
                 // V1.3.0
                 if ((int)(this.numericUpDownTourGPSIntervalSekunden.Value) > 0)
                 {
                     int secondsNextGPS = (int)(this.numericUpDownTourGPSIntervalSekunden.Value);
-                    this.timerPositionGPS.Interval = secondsNextGPS * 1000;
-                    this.doLog("GPS jede " + secondsNextGPS.ToString() + " Sekunden");
+                    this.timerPlanGPS.Interval = secondsNextGPS * 1000;
+                    this.doLog("GPS jede " + secondsNextGPS.ToString() + " Sekunde(n)");
                 }
             }
             this.doLog("Test Tour gestart");
+            this.testPlanType = TestPlanType.TOUR_EXEC; // V1.5.0
 
             this.numScanBarcodes = 0;
             this.numSnapPhotos = 0;
@@ -319,24 +553,83 @@ namespace Battery_Test
             this.stateTourCycle = TaskTestState.IDLE;
             this.stateGPSPosition = TaskTestState.IDLE; // V1.3.0
 
-            this.timerLoopSecond.Enabled = true;
             if (this.testHours > 0)
             {
-                this.timerScanBarcode.Enabled = false; // V1.3.0
-                this.timerCycleInterval.Enabled = ((int)(this.numericUpDownTourCycleIntervalMinuten.Value) > 0);
-                this.timerSnapPhoto.Enabled = ((int)(this.numericUpDownTourSnapPhotos.Value) > 0);
-                this.timerFTPSession.Enabled = ((int)(this.numericUpDownTourFTPSessionIntervalSekunden.Value) > 0);
-                this.timerPositionGPS.Enabled = ((int)(this.numericUpDownTourGPSIntervalSekunden.Value) > 0); // V1.3.0
+                this.timerPlanScan.Enabled = false; // V1.3.0
+                this.timerPlanTourCycle.Enabled = ((int)(this.numericUpDownTourCycleIntervalMinuten.Value) > 0);
+                this.timerPlanPhoto.Enabled = ((int)(this.numericUpDownTourSnapPhotos.Value) > 0);
+                this.timerPlanData.Enabled = ((int)(this.numericUpDownTourFTPSessionIntervalSekunden.Value) > 0);
+                this.timerPlanGPS.Enabled = ((int)(this.numericUpDownTourGPSIntervalSekunden.Value) > 0); // V1.3.0
             }
+
+        }
+
+        private void doSetTimeouts(int BacklightBatteryTimeout, int BacklightACTimeout, int PowerBattUserIdle, int PowerACUserIdle, int PowerBattSuspendTimeout, int PowerACSuspendTimeout)
+        {
+            // this.doLog("Timeouts BT: BKL=" + BacklightBatteryTimeout.ToString() + " IDL=" + PowerBattUserIdle.ToString() + " SUS=" + PowerBattSuspendTimeout.ToString());
+            // this.doLog("Timeouts AC: BKL=" + BacklightACTimeout.ToString() + " IDL=" + PowerACUserIdle.ToString() + " SUS=" + PowerACSuspendTimeout.ToString());
+
+            // set backlight timeouts, ACTimeout==USBTimeout and for some reason both must be set, AC1Timeout is dock AC
+            Registry.SetValue(@"HKEY_CURRENT_USER\ControlPanel\BackLight", @"BatteryTimeout", BacklightBatteryTimeout, RegistryValueKind.DWord);
+            Registry.SetValue(@"HKEY_CURRENT_USER\ControlPanel\BackLight", @"ACTimeout", BacklightACTimeout, RegistryValueKind.DWord); // USB
+            Registry.SetValue(@"HKEY_CURRENT_USER\ControlPanel\BackLight", @"USBTimeout", BacklightACTimeout, RegistryValueKind.DWord); // USB
+            Registry.SetValue(@"HKEY_CURRENT_USER\ControlPanel\BackLight", @"AC1Timeout", BacklightACTimeout, RegistryValueKind.DWord); // AC
+
+            // V1.5.2 a positive value must reside in either the plain or the Unchecked parameter, otherwise the system will revert the plain to a default
+            Registry.SetValue(@"HKEY_CURRENT_USER\ControlPanel\BackLight", @"BatteryTimeoutUnchecked", (BacklightBatteryTimeout == 0) ? 60 : 0, RegistryValueKind.DWord);
+            Registry.SetValue(@"HKEY_CURRENT_USER\ControlPanel\BackLight", @"ACTimeoutUnchecked", (BacklightACTimeout == 0) ? 60 : 0, RegistryValueKind.DWord);
+            Registry.SetValue(@"HKEY_CURRENT_USER\ControlPanel\BackLight", @"USBTimeoutUnchecked", (BacklightACTimeout == 0) ? 60 : 0, RegistryValueKind.DWord);
+            Registry.SetValue(@"HKEY_CURRENT_USER\ControlPanel\BackLight", @"AC1TimeoutUnchecked", (BacklightACTimeout == 0) ? 60 : 0, RegistryValueKind.DWord);
+
+            IntPtr p1 = CreateEvent(HANDLE.Zero, false, true, @"BackLightChangeEvent");
+            SetEvent(p1);
+            CloseHandle(p1);
+
+            // set useridle (screen-off) timeouts
+            Registry.SetValue(@"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Power\Timeouts", "BattUserIdle", PowerBattUserIdle, RegistryValueKind.DWord);
+            Registry.SetValue(@"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Power\Timeouts", "ACUserIdle", PowerACUserIdle, RegistryValueKind.DWord);
+            Registry.SetValue(@"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Power\Timeouts", "USBUserIdle", PowerACUserIdle, RegistryValueKind.DWord); // undocumented, is this the right key?? 
+
+            // set suspend timeouts
+            Registry.SetValue(@"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Power\Timeouts", "BattSuspendTimeout", PowerBattSuspendTimeout, RegistryValueKind.DWord);
+            // V1.5.2 D70e has also USB power settings and ACSuspendTimeout==USB_Timeout, for some unknown reason both need to be set
+            Registry.SetValue(@"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Power\Timeouts", "AC_Timeout", PowerACSuspendTimeout, RegistryValueKind.DWord); // dock AC
+            Registry.SetValue(@"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Power\Timeouts", "USB_Timeout", PowerACSuspendTimeout, RegistryValueKind.DWord); // USB AC
+            Registry.SetValue(@"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Power\Timeouts", "ACSuspendTimeout", PowerACSuspendTimeout, RegistryValueKind.DWord); // USB AC
+
+            IntPtr p2 = CreateEvent(HANDLE.Zero, false, true, @"PowerManager/ReloadActivityTimeouts");
+            SetEvent(p2);
+            CloseHandle(p2);
+        }
+
+        private void doStartTest()
+        {
+            this.testPlanType = TestPlanType.BELADE_PLAN; // V1.5.0
+
+            // V1.5.2
+            this.startTime = DateTime.Now;
+
+            this.doSetTimeouts(0, 0, 0, 0, 0, 0);
+
+            this.menuItemStart.Enabled = false;
+            this.stopTest = false;
+            this.tabControl1.SelectedIndex = this.tabControl1.TabPages.Count - 1;
+            this.menuItemExit.Enabled = false;
             this.buttonStop.Enabled = true;
+            this.buttonSkipPhase.Enabled = true;
+
+            this.timerStateMachine.Interval = 1000; // V1.5.2 go in speed mode
+            this.timerStateMachine.Enabled = true;
+
+
         }
 
         void gps_OnGPSDateEventHandler(object sender, GPSData e)
         {
             this.gps_location = e.GotPosition.ToString() + " (" + e.NumberOfSatellites.ToString() + ") " + e.LongitudeD + "/" + e.LatitudeD;
-            if (e.GotPosition)
+            if (e.GotPosition && this.stateGPSPosition==TaskTestState.EXEC)
             {
-                this.timerFixPositionGPS.Enabled = false;
+                this.timerExecGPS.Enabled = false;
                 this.stateGPSPosition = TaskTestState.DONE;
                 this.Invoke(new invoked_log(this.doLog), "GPS: " + this.gps_location);
             }
@@ -346,21 +639,24 @@ namespace Battery_Test
         {
             this.stopTest = true;
 
-            this.timerScanBarcode.Enabled = false;
-            this.timerSnapPhoto.Enabled = false;
-            this.timerFTPSession.Enabled = false;
-            this.timerCycleInterval.Enabled = false;
-            this.timerPositionGPS.Enabled = false;
-            this.timerFixPositionGPS.Enabled = false;
+            this.timerPlanScan.Enabled = false;
+            this.timerPlanPhoto.Enabled = false;
+            this.timerPlanData.Enabled = false;
+            this.timerPlanTourCycle.Enabled = false;
+            this.timerPlanGPS.Enabled = false;
+            this.timerExecGPS.Enabled = false;
 
             this.timeSpan = DateTime.Now.Subtract(this.startTime);
             this.doLog("Test abbrechen ...");
 
+            this.timerStateMachine.Interval = 1000;
+            this.timerStateMachine.Enabled = true;
             this.buttonStop.Enabled = false;
+            this.buttonSkipPhase.Enabled = false;
 
         }
 
-        private void timerPhoto_Tick(object sender, EventArgs e)
+        private void timerPlanPhoto_Tick(object sender, EventArgs e)
         {
             if (this.stateSnapPhoto == TaskTestState.IDLE)
             {
@@ -372,7 +668,7 @@ namespace Battery_Test
             }
         }
 
-        private void timerScan_Tick(object sender, EventArgs e)
+        private void timerPlanScan_Tick(object sender, EventArgs e)
         {
             if (this.stateScanBarcode == TaskTestState.IDLE)
             {
@@ -384,7 +680,7 @@ namespace Battery_Test
             }
         }
 
-        private void timerData_Tick(object sender, EventArgs e)
+        private void timerPlanData_Tick(object sender, EventArgs e)
         {
             if (this.stateFTPSession == TaskTestState.IDLE)
             {
@@ -395,7 +691,6 @@ namespace Battery_Test
                 this.doLog("Data skipped (" + this.stateFTPSession.ToString() + ")");
             }
         }
-
 
 
         // This is the main State Machine Loop
@@ -430,275 +725,479 @@ namespace Battery_Test
                 {
                     this.stateGPSPosition = TaskTestState.DONE;
                 }
+                // V1.5.2
+                bool result = (PowerPolicyNotify(PowerMode.UnattendedMode, UNATTENDED_OFF) != 0);  
+
             }
 
-            if (this.stateGPSPosition == TaskTestState.DONE)
+            switch (this.testPlanType)
             {
-                this.timerFixPositionGPS.Enabled = false;
-                Thread t = new Thread(new ThreadStart(this.threadedCloseGPS));
-                t.Start();
-            }
+                case TestPlanType.BELADE_PLAN:
+                    if (this.checkBoxIncludeBeladePhase.Checked)
+                    {
+                        this.timerStateMachine.Enabled = false;
+                        this.timerStateMachine.Interval = 5000; // V1.5.2 go in relax mode
+                        this.doStartBelade();
+                        this.timerStateMachine.Enabled = true;
 
-            // GPS .. this may need to be reviewed
-            // Currently the GPS is opened every time on test demand and closed after Fix or Timeout
-            // The event handler waits for a Fix-position or else the Close timer will end
-            // Not sure there is time enough for fix, although Windows should also have the GPS open
-            // Alternatively, the GPS needs to be opened at the start of the Test and closed at the End and at test interval we simply take the current status immediately
-
-            if (this.stateGPSPosition == TaskTestState.PLAN)
-            {
-                try
-                {
-                    this.doLog("GPS: obtain location ...");
-                    if (this.gps.OpenComPort()==0)
-                    { // V1.3.0
-                        this.stateGPSPosition = TaskTestState.EXEC;
-                        this.timerFixPositionGPS.Enabled = true;
                     }
                     else
                     {
+                        this.doLog("Test: skip Belade ...");
+                        this.testPlanType = TestPlanType.TOUR_PLAN;
+                    }
+                    break;
+
+                case TestPlanType.TOUR_PLAN:
+                    if (this.checkBoxIncludeTourPhase.Checked)
+                    {
+                        this.timerStateMachine.Enabled = false;
+                        this.timerStateMachine.Interval = 5000; // V1.5.2 go in relax mode
+                        this.doStartTour();
+                        this.timerStateMachine.Enabled = true;
+                    }
+                    else
+                    {
+                        this.doLog("Test: skip Tour ...");
+                        this.testPlanType = TestPlanType.RUHE_PLAN;
+                    }
+                    break;
+
+                case TestPlanType.RUHE_PLAN:
+                    if (this.checkBoxIncludeRuhePhase.Checked)
+                    {
+                        this.timerStateMachine.Enabled = false;
+                        this.timerStateMachine.Interval = 20000; // V1.5.2 go in relax mode
+                        this.doStartRuhe();
+                        this.timerStateMachine.Enabled = true;
+
+                    }
+                    else
+                    {
+                        this.doLog("Test: skip Ruhe ...");
+                        this.testPlanType = TestPlanType.DONE;
+                    }
+                    break;
+
+                case TestPlanType.RUHE_EXEC:
+
+                    if (!stopTest && !skipPhase)
+                    {
+                        // this.doLog("Ruhephase ping");
+                        if (this.radioButtonRuheSuspend.Checked)
+                        {
+                            this.timerStateMachine.Enabled = false; // temp disable the looper because we get dual entry after resume
+                           
+                            // V1.5.2
+                            // long fileStartTime = DateTime.Now.AddHours((double)this.numericUpDownRuheLaufzeitStunden.Value).AddMinutes((double)this.numericUpDownRuheLaufzeitMinuten.Value).ToFileTime();
+                            long fileStartTime = this.startTime.AddHours((double)this.numericUpDownRuheLaufzeitStunden.Value).AddMinutes((double)this.numericUpDownRuheLaufzeitMinuten.Value).ToFileTime();
+                            
+                            // V1.5.2 wakeup every hour to log battery , so let's see which interval is shorter
+                            long fileStartTime2 = DateTime.Now.AddHours((double)1.0).ToFileTime();
+                            // long fileStartTime2 = DateTime.Now.AddMinutes((double)2.0).ToFileTime();
+                            if (fileStartTime2 < fileStartTime)
+                            {
+                                fileStartTime = fileStartTime2;
+                            }
+
+                            long localFileStartTime = 0;
+                            FileTimeToLocalFileTime(ref fileStartTime, ref localFileStartTime);
+                            
+                            SystemTime systemStartTime = new SystemTime();
+                            FileTimeToSystemTime(ref localFileStartTime, systemStartTime);
+                            // we plan to be woken up after a few hours
+                            string myappname = System.Reflection.Assembly.GetExecutingAssembly().GetName().CodeBase;
+                            CeRunAppAtTime(myappname, systemStartTime);
+
+                            this.doLog("Suspend für " + this.numericUpDownRuheLaufzeitStunden.Value.ToString() + "h" + this.numericUpDownRuheLaufzeitMinuten.Value.ToString() + "m");
+
+                            // V1.5.2
+                            HSM.Embedded.Utility.UtilMethods.SuspendDevice();
+                            // PowerPolicyNotify(PowerMode.SuspendKeyOrPwrButtonPressed, 0);  
+
+                            this.timeSpan = DateTime.Now.Subtract(this.startTime); // V1.5.0
+                            this.doLog("Wakeup nach: " + this.timeSpan.ToString().Split('.')[0]);
+
+                            // V2.5.2
+                            this.lastLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
+                            this.doLog("Akku " + this.lastLevel.ToString() + "%");
+
+                            this.timerStateMachine.Enabled = true;
+                        }
+                        else if (!this.deviceInUnattended)
+                        {
+                            // V1.5.2
+                            this.timerManageUnattended.Interval = 1000;
+                            this.timerManageUnattended.Enabled = true;
+                        }
+                        this.timeSpan = DateTime.Now.Subtract(this.startTime); // V1.5.0
+
+                        // if (timeSpan.Hours >= this.testHours) // V1.3.0 use global var
+                        if (timeSpan.CompareTo(this.testSpan)>0) // V1.5.2
+                        {
+                            this.doLog("Ruhephase ending");
+                            Form1.SystemIdleTimerReset();
+                            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+
+                            this.timerManageUnattended.Enabled = false;
+                            this.deviceInUnattended = false;
+                            
+                            this.testPlanType = TestPlanType.DONE;
+
+                            this.doLog("Test beendet nach: " + this.timeSpan.ToString().Split('.')[0]);
+                            this.testPlanType = TestPlanType.DONE;
+                        } // if we were woken up earlier, then we look back into this
+
+                    }
+                    else
+                    {
+                        this.testPlanType = TestPlanType.DONE;
+                    }
+                    break;
+
+                case TestPlanType.BELADE_EXEC:
+                case TestPlanType.TOUR_EXEC:
+                case TestPlanType.DONE:
+
+                    if (this.stateGPSPosition == TaskTestState.DONE)
+                    {
+                        this.timerExecGPS.Enabled = false;
                         this.stateGPSPosition = TaskTestState.IDLE;
-                        this.doLog("GPS: fail to open GPS");
+                        Thread t = new Thread(new ThreadStart(this.threadedCloseGPS));
+                        t.Start();
                     }
-                }
-                catch
-                {
-                    this.stateGPSPosition = TaskTestState.IDLE;
-                }
-            }
 
+                    // GPS .. this may need to be reviewed
+                    // Currently the GPS is opened every time on test demand and closed after Fix or Timeout
+                    // The event handler waits for a Fix-position or else the Close timer will end
+                    // Not sure there is time enough for fix, although Windows should also have the GPS open
+                    // Alternatively, the GPS needs to be opened at the start of the Test and closed at the End and at test interval we simply take the current status immediately
 
-            if (this.stateTourCycle == TaskTestState.PLAN && (this.stateSnapPhoto == TaskTestState.IDLE || this.stateSnapPhoto == TaskTestState.PLAN))
-            {
-                this.numTourCycles++;
-                this.stateTourCycle = TaskTestState.EXEC;
-                this.numTourCycleScanBarcodes = (int)(this.numericUpDownTourCycleScanBarcodes.Value);
-            }
-            if (this.stateTourCycle == TaskTestState.EXEC && this.numTourCycleScanBarcodes > 0 && this.stateScanBarcode == TaskTestState.IDLE)
-            {
-                this.numTourCycleScanBarcodes--;
-                this.stateScanBarcode = TaskTestState.PLAN;
-            }
-            if (this.stateTourCycle == TaskTestState.EXEC && this.numTourCycleScanBarcodes == 0)
-            {
-                if (this.textBoxDataServer.Text != string.Empty && (int)(this.numericUpDownTourCycleFTPSessionSize.Value) > 0)
-                {
-                    this.numFTPSessions++;
-                    this.doLog("Interval Data #" + this.numTourCycles.ToString() + ": (" + this.numericUpDownTourCycleFTPSessionSize.Value.ToString() + ")");
-                    try
-                    {
-                        OpenNETCF.Net.Ftp.FTP client = new OpenNETCF.Net.Ftp.FTP(this.textBoxDataServer.Text);
-                        if (client != null)
-                        {
-                            client.BeginConnect(this.textBoxDataBenutzer.Text, this.textBoxDataKennwort.Text);
-                            int numWait = 50;
-                            while (!client.IsConnected && numWait-- > 0)
-                            {
-                                Thread.Sleep(100);
-                            }
-                            if (client.IsConnected)
-                            {
-                                client.TransferType = OpenNETCF.Net.Ftp.FTPTransferType.Binary;
-                                this.numTotalDataBytes += (int)(this.numericUpDownTourCycleFTPSessionSize.Value);
-                                client.SendBytes((int)this.numericUpDownTourCycleFTPSessionSize.Value);
-                                client.Disconnect();
-                                client = null;
-                                this.numFTPSuccess++;
-                            }
-                            else
-                            {
-                                this.doLog("FTP nicht geöffnet");
-                            }
-                        }
-                        else
-                        {
-                            this.doLog("FTP nicht geöffnet");
-                        }
-                    }
-                    catch (Exception ee)
-                    {
-                        this.doLog(this.textBoxDataBenutzer.Text + ":" + this.textBoxDataKennwort.Text + "@" + this.textBoxDataServer.Text + " -> " + ee.Message);
-                    }
-                }
-                this.stateTourCycle = TaskTestState.DONE;
-            }
-
-            if (this.stateTourCycle == TaskTestState.DONE)
-            {
-                this.stateTourCycle = TaskTestState.IDLE;
-            }
-
-            if (this.stateScanBarcode == TaskTestState.PLAN && (this.stateSnapPhoto == TaskTestState.IDLE || this.stateSnapPhoto == TaskTestState.PLAN))
-            {
-                this.numScanBarcodes++;
-                this.doLog("Scan #" + this.numScanBarcodes.ToString());
-                this.stateScanBarcode = TaskTestState.EXEC;
-                this.da.Connect();
-                this.da.ScanTimeout = this.timeoutScanBarcode;
-                this.da.ScanBarcode();
-            }
-
-            if (this.stateScanBarcode == TaskTestState.DONE)
-            {
-                this.da.Disconnect();
-                this.stateScanBarcode = TaskTestState.IDLE;
-            }
-
-            if (this.stateSnapPhoto == TaskTestState.PLAN && this.stateScanBarcode == TaskTestState.IDLE && this.stateTourCycle == TaskTestState.IDLE)
-            {
-                this.numSnapPhotos++;
-                this.doLog("Photo #" + this.numSnapPhotos.ToString());
-                this.stateSnapPhoto = TaskTestState.EXEC;
-                try
-                {
-                    this.ca.Connect(this.pictureBox1.Handle, null, null);
-                    long resolutionSetting;
-                    this.ca.GetResolutionCount(out resolutionSetting);
-                    this.ca.SetResolution((uint)(resolutionSetting - 1));
-                    this.ca.SetProperty(CameraProperty.Illumination, 1, PropertyMode.Manual);
-                    this.ca.SetProperty(CameraProperty.ColorEnable, 1, PropertyMode.Manual);
-                    this.ca.StartPreview();
-                    this.timerPhotoSnap.Enabled = true;
-                }
-                catch (Exception ee)
-                {
-                }
-            }
-
-            if (this.stateSnapPhoto == TaskTestState.DONE)
-            {
-                try
-                {
-                    this.ca.StopPreview();
-                    this.ca.Disconnect();
-                }
-                catch
-                {
-                }
-                this.stateSnapPhoto = TaskTestState.IDLE;
-            }
-
-            if (this.stateFTPSession == TaskTestState.PLAN)
-            {
-                this.numFTPSessions++;
-                this.doLog("Data #" + this.numFTPSessions.ToString() + ": (" + this.numSendDataBytes.ToString() + ") ");
-                this.stateFTPSession = TaskTestState.EXEC;
-                if (this.textBoxDataServer.Text != string.Empty)
-                {
-                    try
-                    {
-                        OpenNETCF.Net.Ftp.FTP client = new OpenNETCF.Net.Ftp.FTP(this.textBoxDataServer.Text);
-                        if (client != null)
-                        {
-                            client.BeginConnect(this.textBoxDataBenutzer.Text, this.textBoxDataKennwort.Text);
-                            int numWait = 50;
-                            while (!client.IsConnected && numWait-- > 0)
-                            {
-                                Thread.Sleep(100);
-                            }
-                            if (client.IsConnected)
-                            {
-                                client.TransferType = OpenNETCF.Net.Ftp.FTPTransferType.Binary;
-                                this.numTotalDataBytes += this.numSendDataBytes;
-                                client.SendBytes(this.numSendDataBytes);
-                                client.Disconnect();
-                                client = null;
-                                this.numFTPSuccess++;
-                            }
-                            else
-                            {
-                                this.doLog("FTP nicht geöffnet");
-                            }
-                        }
-                        else
-                        {
-                            this.doLog("FTP nicht geöffnet");
-                        }
-                    }
-                    catch (Exception ee)
-                    {
-                        this.doLog(this.textBoxDataBenutzer.Text + ":" + this.textBoxDataKennwort.Text + "@" + this.textBoxDataServer.Text + " -> " + ee.Message);
-                    }
-                }
-                this.stateFTPSession = TaskTestState.DONE;
-            }
-
-            if (this.stateFTPSession == TaskTestState.DONE)
-            {
-                this.stateFTPSession = TaskTestState.IDLE;
-            }
-
-            if (!this.stopTest && timeSpan.Hours >= this.testHours) // V1.3.0 use global var
-            {
-                // this.timerSecond.Enabled = false; // V1.3.0 
-                this.stopTest = true; // V1.3.0 
-                this.buttonStop.Enabled = false; // V1.3.2
-
-                this.timerScanBarcode.Enabled = false; // V1.3.0 
-                this.timerSnapPhoto.Enabled = false; // V1.3.0 
-                this.timerFTPSession.Enabled = false; // V1.3.0 
-                this.timerCycleInterval.Enabled = false; // V1.3.0 
-                this.timerPositionGPS.Enabled = false; // V1.3.0 
-                this.timerFixPositionGPS.Enabled = false;
-                this.doLog("Test beenden ...");
-
-                // V1.3.2 test for TestType
-                if (this.testPlanType==TestPlanType.BELADE && (int)(this.numericUpDownBeladeFTPBulkSize.Value) > 0)
-                {
-                    this.numFTPSessions++;
-                    this.doLog("Bulk #" + this.numFTPSessions.ToString() + ": (" + this.numericUpDownBeladeFTPBulkSize.Value.ToString() + ") ");
-                    if (this.textBoxDataServer.Text != string.Empty)
+                    if (this.stateGPSPosition == TaskTestState.PLAN)
                     {
                         try
                         {
-                            OpenNETCF.Net.Ftp.FTP client = new OpenNETCF.Net.Ftp.FTP(this.textBoxDataServer.Text);
-                            if (client != null)
+                            this.doLog("GPS: obtain location ...");
+                            if (this.gps.OpenComPort() == 0)
+                            { // V1.3.0
+                            this.stateGPSPosition = TaskTestState.EXEC;
+                            this.timerExecGPS.Enabled = true;
+                            }
+                            else
                             {
-                                client.BeginConnect(this.textBoxDataBenutzer.Text, this.textBoxDataKennwort.Text);
-                                int numWait = 50;
-                                while (!client.IsConnected && numWait-- > 0)
+                                this.stateGPSPosition = TaskTestState.IDLE;
+                                this.doLog("GPS: fail to open GPS");
+                            }
+                        }
+                        catch
+                        {
+                            this.stateGPSPosition = TaskTestState.IDLE;
+                        }
+                    }
+
+
+                    if (this.stateTourCycle == TaskTestState.PLAN && (this.stateSnapPhoto == TaskTestState.IDLE || this.stateSnapPhoto == TaskTestState.PLAN))
+                    {
+                        this.numTourCycles++;
+                        this.stateTourCycle = TaskTestState.EXEC;
+                        this.numTourCycleScanBarcodes = (int)(this.numericUpDownTourCycleScanBarcodes.Value);
+                    }
+                    if (this.stateTourCycle == TaskTestState.EXEC && this.numTourCycleScanBarcodes > 0 && this.stateScanBarcode == TaskTestState.IDLE)
+                    {
+                        this.numTourCycleScanBarcodes--;
+                        this.stateScanBarcode = TaskTestState.PLAN;
+                    }
+                    if (this.stateTourCycle == TaskTestState.EXEC && this.numTourCycleScanBarcodes == 0)
+                    {
+                        if (this.textBoxDataServer.Text != string.Empty && (int)(this.numericUpDownTourCycleFTPSessionSize.Value) > 0)
+                        {
+                            this.numFTPSessions++;
+                            this.doLog("Interval Data #" + this.numTourCycles.ToString() + ": (" + this.numericUpDownTourCycleFTPSessionSize.Value.ToString() + ")");
+                            try
+                            {
+                                OpenNETCF.Net.Ftp.FTP client = new OpenNETCF.Net.Ftp.FTP(this.textBoxDataServer.Text);
+                                if (client != null)
                                 {
-                                    Thread.Sleep(100);
-                                }
-                                if (client.IsConnected)
-                                {
-                                    client.TransferType = OpenNETCF.Net.Ftp.FTPTransferType.Binary;
-                                    this.numTotalDataBytes += (int)(this.numericUpDownBeladeFTPBulkSize.Value) * 1024 * 1024;
-                                    client.SendBytes((int)this.numericUpDownBeladeFTPBulkSize.Value * 1024 * 1024);
-                                    client.Disconnect();
-                                    client = null;
-                                    this.numFTPSuccess++;
+                                    client.BeginConnect(this.textBoxDataBenutzer.Text, this.textBoxDataKennwort.Text);
+                                    int numWait = 50;
+                                    while (!client.IsConnected && numWait-- > 0)
+                                    {
+                                        Thread.Sleep(100);
+                                    }
+                                    if (client.IsConnected)
+                                    {
+                                        client.TransferType = OpenNETCF.Net.Ftp.FTPTransferType.Binary;
+                                        this.numTotalDataBytes += (int)(this.numericUpDownTourCycleFTPSessionSize.Value);
+                                        client.SendBytes((int)this.numericUpDownTourCycleFTPSessionSize.Value);
+                                        client.Disconnect();
+                                        client = null;
+                                        this.numFTPSuccess++;
+                                    }
+                                    else
+                                    {
+                                        this.doLog("FTP nicht geöffnet");
+                                    }
                                 }
                                 else
                                 {
                                     this.doLog("FTP nicht geöffnet");
                                 }
                             }
-                            else
+                            catch (Exception ee)
                             {
-                                this.doLog("FTP nicht geöffnet");
+                                this.doLog(this.textBoxDataBenutzer.Text + ":" + this.textBoxDataKennwort.Text + "@" + this.textBoxDataServer.Text + " -> " + ee.Message);
                             }
+                        }
+                        this.stateTourCycle = TaskTestState.DONE;
+                    }
+
+                    if (this.stateTourCycle == TaskTestState.DONE)
+                    {
+                        this.stateTourCycle = TaskTestState.IDLE;
+                    }
+
+                    if (this.stateScanBarcode == TaskTestState.PLAN && (this.stateSnapPhoto == TaskTestState.IDLE || this.stateSnapPhoto == TaskTestState.PLAN))
+                    {
+                        this.numScanBarcodes++;
+                        this.doLog("Scan #" + this.numScanBarcodes.ToString());
+                        this.stateScanBarcode = TaskTestState.EXEC;
+                        this.da.Connect();
+                        this.da.ScanTimeout = this.timeoutScanBarcode;
+                        this.da.ScanBarcode();
+                    }
+
+                    if (this.stateScanBarcode == TaskTestState.DONE)
+                    {
+                        this.da.Disconnect();
+                        this.stateScanBarcode = TaskTestState.IDLE;
+                    }
+
+                    if (this.stateSnapPhoto == TaskTestState.PLAN && this.stateScanBarcode == TaskTestState.IDLE && this.stateTourCycle == TaskTestState.IDLE)
+                    {
+                        this.numSnapPhotos++;
+                        this.doLog("Photo #" + this.numSnapPhotos.ToString());
+                        this.stateSnapPhoto = TaskTestState.EXEC;
+                        try
+                        {
+                            this.ca.Connect(this.pictureBox1.Handle, null, null);
+                            long resolutionSetting;
+                            this.ca.GetResolutionCount(out resolutionSetting);
+                            this.ca.SetResolution((uint)(resolutionSetting - 1));
+                            this.ca.SetProperty(CameraProperty.Illumination, 1, PropertyMode.Manual);
+                            this.ca.SetProperty(CameraProperty.ColorEnable, 1, PropertyMode.Manual);
+                            this.ca.StartPreview();
+                            this.timerExecPhoto.Enabled = true;
                         }
                         catch (Exception ee)
                         {
-                            this.doLog(this.textBoxDataBenutzer.Text + ":" + this.textBoxDataKennwort.Text + "@" + this.textBoxDataServer.Text + " -> " + ee.Message);
                         }
                     }
-                }
+
+                    if (this.stateSnapPhoto == TaskTestState.DONE)
+                    {
+                        try
+                        {
+                            this.ca.StopPreview();
+                            this.ca.Disconnect();
+                        }
+                        catch
+                        {
+                        }
+                        this.stateSnapPhoto = TaskTestState.IDLE;
+                    }
+
+                    if (this.stateFTPSession == TaskTestState.PLAN)
+                    {
+                        this.numFTPSessions++;
+                        this.doLog("Data #" + this.numFTPSessions.ToString() + ": (" + this.numSendDataBytes.ToString() + ") ");
+                        this.stateFTPSession = TaskTestState.EXEC;
+                        if (this.textBoxDataServer.Text != string.Empty)
+                        {
+                            try
+                            {
+                                OpenNETCF.Net.Ftp.FTP client = new OpenNETCF.Net.Ftp.FTP(this.textBoxDataServer.Text);
+                                if (client != null)
+                                {
+                                    client.BeginConnect(this.textBoxDataBenutzer.Text, this.textBoxDataKennwort.Text);
+                                    int numWait = 50;
+                                    while (!client.IsConnected && numWait-- > 0)
+                                    {
+                                        Thread.Sleep(100);
+                                    }
+                                    if (client.IsConnected)
+                                    {
+                                        client.TransferType = OpenNETCF.Net.Ftp.FTPTransferType.Binary;
+                                        this.numTotalDataBytes += this.numSendDataBytes;
+                                        client.SendBytes(this.numSendDataBytes);
+                                        client.Disconnect();
+                                        client = null;
+                                        this.numFTPSuccess++;
+                                    }
+                                    else
+                                    {
+                                        this.doLog("FTP nicht geöffnet");
+                                    }
+                                }
+                                else
+                                {
+                                    this.doLog("FTP nicht geöffnet");
+                                }
+                            }
+                            catch (Exception ee)
+                            {
+                                this.doLog(this.textBoxDataBenutzer.Text + ":" + this.textBoxDataKennwort.Text + "@" + this.textBoxDataServer.Text + " -> " + ee.Message);
+                            }
+                        }
+                        this.stateFTPSession = TaskTestState.DONE;
+                    }
+
+                    if (this.stateFTPSession == TaskTestState.DONE)
+                    {
+                        this.stateFTPSession = TaskTestState.IDLE;
+                    }
+
+                    if ((this.stopTest || this.skipPhase || timeSpan.CompareTo(this.testSpan) > 0) &&
+                        (this.stateFTPSession != TaskTestState.IDLE || this.stateSnapPhoto != TaskTestState.IDLE || this.stateScanBarcode != TaskTestState.IDLE || this.stateGPSPosition != TaskTestState.IDLE))
+                    {
+                        // do nothing yet, wait until substates are finised
+                        if (!complained)
+                        {
+                            // V1.5.3
+                            this.timerPlanScan.Enabled = false; 
+                            this.timerPlanPhoto.Enabled = false;
+                            this.timerPlanData.Enabled = false; 
+                            this.timerPlanTourCycle.Enabled = false;
+                            this.timerPlanGPS.Enabled = false; 
+
+                            complained = true;
+                            this.doLog("waiting for sub test to complete");
+                        }
+                    } else 
+
+                    // V1.5.2
+                    // if (!this.stopTest && (this.skipPhase || timeSpan.Hours >= this.testHours || this.testPlanType == TestPlanType.DONE)) // V1.3.0 use global var
+                    if (!this.stopTest && (this.skipPhase || timeSpan.CompareTo(this.testSpan)>0 || this.testPlanType == TestPlanType.DONE)) // V1.3.0 use global var
+                        {
+                        // V1.3.0
+                        this.timerPlanScan.Enabled = false;
+                        this.timerPlanPhoto.Enabled = false;
+                        this.timerPlanData.Enabled = false;
+                        this.timerPlanTourCycle.Enabled = false;
+                        this.timerPlanGPS.Enabled = false;
+                        // V1.5.3
+                        // this.timerExecGPS.Enabled = false;
+                        this.doLog("Test beenden ...");
+
+                        // V1.3.2 test for TestType
+                        if (!this.skipPhase && this.testPlanType == TestPlanType.BELADE_EXEC && (int)(this.numericUpDownBeladeFTPBulkSize.Value) > 0)
+                        {
+                            this.numFTPSessions++;
+                            this.doLog("Bulk #" + this.numFTPSessions.ToString() + ": (" + this.numericUpDownBeladeFTPBulkSize.Value.ToString() + ") ");
+                            if (this.textBoxDataServer.Text != string.Empty)
+                            {
+                                try
+                                {
+                                    OpenNETCF.Net.Ftp.FTP client = new OpenNETCF.Net.Ftp.FTP(this.textBoxDataServer.Text);
+                                    if (client != null)
+                                    {
+                                        client.BeginConnect(this.textBoxDataBenutzer.Text, this.textBoxDataKennwort.Text);
+                                        int numWait = 50;
+                                        while (!client.IsConnected && numWait-- > 0)
+                                        {
+                                            Thread.Sleep(100);
+                                        }
+                                        if (client.IsConnected)
+                                        {
+                                            client.TransferType = OpenNETCF.Net.Ftp.FTPTransferType.Binary;
+                                            this.numTotalDataBytes += (int)(this.numericUpDownBeladeFTPBulkSize.Value) * 1024 * 1024;
+                                            client.SendBytes((int)this.numericUpDownBeladeFTPBulkSize.Value * 1024 * 1024);
+                                            client.Disconnect();
+                                            client = null;
+                                            this.numFTPSuccess++;
+                                        }
+                                        else
+                                        {
+                                            this.doLog("FTP nicht geöffnet");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        this.doLog("FTP nicht geöffnet");
+                                    }
+                                }
+                                catch (Exception ee)
+                                {
+                                    this.doLog(this.textBoxDataBenutzer.Text + ":" + this.textBoxDataKennwort.Text + "@" + this.textBoxDataServer.Text + " -> " + ee.Message);
+                                }
+                            }
+                            // V1.5.2
+                            bool result = (PowerPolicyNotify(PowerMode.UnattendedMode, UNATTENDED_OFF) != 0);
+
+                        }
+
+                        this.doLog("Akku " + HSM.Embedded.Utility.SystemNotification.GetBatteryLife().ToString() + "%");
+
+                        // this.timerSecond.Enabled = false; // V1.3.0 
+                        // V1.5.0 jump to next major test
+                        switch (this.testPlanType)
+                        {
+                            case TestPlanType.BELADE_EXEC:
+                                this.timeSpan = DateTime.Now.Subtract(this.startTime); //V1.5.0
+                                this.doLog("Test beendet nach: " + this.timeSpan.ToString().Split('.')[0]);
+                                this.testPlanType = TestPlanType.TOUR_PLAN;
+                                break;
+                            case TestPlanType.TOUR_EXEC:
+                                this.timeSpan = DateTime.Now.Subtract(this.startTime); //V1.5.0
+                                this.doLog("Test beendet nach: " + this.timeSpan.ToString().Split('.')[0]);
+                                this.testPlanType = TestPlanType.RUHE_PLAN;
+                                //Thread t = new Thread(new ThreadStart(this.threadedCloseGPS));
+                                //t.Start();
+                                break;
+                            case TestPlanType.DONE:
+                                this.stopTest = true; // V1.3.0 
+                                this.buttonSkipPhase.Enabled = false;
+                                this.buttonStop.Enabled = false; // V1.3.2
+                                // this.testPlanType = TestPlanType.NONE;
+                                break;
+                            default: // can't be here ...
+                                break;
+                        }
+                        this.skipPhase = false;
+                    }
+
+                    if (this.stopTest && this.stateFTPSession == TaskTestState.IDLE && this.stateSnapPhoto == TaskTestState.IDLE && this.stateScanBarcode == TaskTestState.IDLE && this.stateGPSPosition == TaskTestState.IDLE)
+                    {
+                        Form1.SystemIdleTimerReset();
+                        Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+
+                        // V1.5.3
+                        this.timerPlanScan.Enabled = false; // V1.3.0 
+                        this.timerPlanPhoto.Enabled = false; // V1.3.0 
+                        this.timerPlanData.Enabled = false; // V1.3.0 
+                        this.timerPlanTourCycle.Enabled = false; // V1.3.0 
+                        this.timerPlanGPS.Enabled = false; // V1.3.0 
+
+                        this.timerManageUnattended.Enabled = false;
+                        this.timerStateMachine.Enabled = false;
+                        this.timerStateMachine.Interval = 1000; // V1.5.2 go back in speed mode next time
+                        this.menuItemExit.Enabled = true;
+                        this.menuItemStart.Enabled = true;
+                        this.testPlanType = TestPlanType.NONE;
+
+                        this.gps = null;
+
+                        // V1.5.2
+                        this.doSetTimeouts(3 * 60, 0, 0, 0, 5 * 60, 0);
+                    }
+
+                    this.doRefreshOutputStatusDisplay();
+                    break;
+
+                default: // IDLE, DONE
+                    this.doLog("Default? : " + this.testPlanType.ToString());
+                    this.timerStateMachine.Enabled = false;
+                    break;
             }
-
-            if (this.stopTest && this.stateFTPSession == TaskTestState.IDLE && this.stateSnapPhoto == TaskTestState.IDLE && this.stateScanBarcode == TaskTestState.IDLE && this.stateGPSPosition == TaskTestState.IDLE)
-            {
-                this.timeSpan = DateTime.Now.Subtract(this.startTime); //V1.3.2
-                this.doLog("Test beendet nach: " + this.timeSpan.ToString().Split('.')[0]);
-                this.timerLoopSecond.Enabled = false;
-                this.menuItemExit.Enabled = true;
-                this.menuItemStart.Enabled = true;
-
-                this.gps = null;
-            }
-
-            this.doRefreshOutputStatusDisplay();
         }
 
         // we close the GPS in separate thread because otherwise it may lockup due to thread implementation in .NET
@@ -779,6 +1278,7 @@ namespace Battery_Test
         {
             this.numericUpDownTourLaufzeitStunden.Value = 10;
             this.numericUpDownTourCycleIntervalMinuten.Value = 6;
+            this.numericUpDownTourCycleDisplayAn.Value = 2;
             this.numericUpDownTourCycleScanBarcodes.Value = 2;
             this.numericUpDownTourCycleScanBarcodeDurationSekunden.Value = 5;
             this.numericUpDownTourFTPSessionIntervalSekunden.Value = 10 * 60 / 5;
@@ -800,6 +1300,7 @@ namespace Battery_Test
         {
             this.numericUpDownTourLaufzeitStunden.Value = 10;
             this.numericUpDownTourCycleIntervalMinuten.Value = 12;
+            this.numericUpDownTourCycleDisplayAn.Value = 2;
             this.numericUpDownTourCycleScanBarcodes.Value = 2;
             this.numericUpDownTourCycleScanBarcodeDurationSekunden.Value = 5;
             this.numericUpDownTourFTPSessionIntervalSekunden.Value = 10 * 60 / 5;
@@ -836,15 +1337,15 @@ namespace Battery_Test
 
         private void menuItemExit_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show("Stoppen?", "trans-o-flex", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.OK)
+            if (MessageBox.Show("Beenden?", "trans-o-flex", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.OK)
             {
                 Application.Exit();
             }
         }
 
-        private void timerSnapPhotoSnap_Tick(object sender, EventArgs e)
+        private void timerExecPhoto_Tick(object sender, EventArgs e)
         {
-            this.timerPhotoSnap.Enabled = false;
+            this.timerExecPhoto.Enabled = false;
             string filename = @"\My Documents\trans-o-flex-" + this.startTime.ToString("yyyy-MM-dd_HH-mm-ss") + "_" + this.numSnapPhotos.ToString() + ".jpg";
             try
             {
@@ -890,21 +1391,24 @@ namespace Battery_Test
 
         private void menuItemStart_Click(object sender, EventArgs e)
         {
-            if (this.tabControl1.SelectedIndex == 1)
-            {
-                this.doStartBelade();
-            }
-            if (this.tabControl1.SelectedIndex == 2)
-            {
-                this.doStartTour();
-            }
+            this.doStartTest();
         }
 
 
-        private void timerCycleInterval_Tick(object sender, EventArgs e)
+        private void timerPlanTourCycle_Tick(object sender, EventArgs e)
         {
+            // V1.5.2
+            this.timerManageUnattended.Enabled = false;
+
             Form1.SystemIdleTimerReset();
             Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+
+            // V1.5.2
+            int secondsDisplayOn = (int)(this.numericUpDownTourCycleDisplayAn.Value) * 60;
+            this.timerManageUnattended.Interval = secondsDisplayOn * 1000;
+            this.deviceInUnattended = false;
+            this.timerManageUnattended.Enabled = true;
+
 
             if (this.stateTourCycle == TaskTestState.IDLE)
             {
@@ -916,9 +1420,9 @@ namespace Battery_Test
             }
         }
 
-      
 
-        private void timerPositionGPS_Tick(object sender, EventArgs e)
+
+        private void timerPlanGPS_Tick(object sender, EventArgs e)
         {
             if (this.stateGPSPosition == TaskTestState.IDLE)
             {
@@ -948,9 +1452,61 @@ namespace Battery_Test
             Registry.SetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "FTPPassword", ((TextBox)sender).Text);
         }
 
+        private void textBoxGPRSEntry_LostFocus(object sender, EventArgs e)
+        {
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "GPRSEntry", ((TextBox)sender).Text);
+
+        }
+
+        private void textBoxGPRSAPN_LostFocus(object sender, EventArgs e)
+        {
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "GPRSAPN", ((TextBox)sender).Text);
+
+        }
+
+        private void textBoxGPRSBenutzer_LostFocus(object sender, EventArgs e)
+        {
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "GPRSUsername", ((TextBox)sender).Text);
+
+        }
+
+        private void textBoxGPRSKennwort_LostFocus(object sender, EventArgs e)
+        {
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Honeywell\Transoflex", "GPRSPassword", ((TextBox)sender).Text);
+
+        }
+
+
         private void buttonTestFTP_Click(object sender, EventArgs e)
         {
             this.doLog("Test FTP: (1) ");
+
+            this.textBoxTestFTP.Text = "Setting radiostate ...";
+            Application.DoEvents();
+
+            WirelessManager.SetWLANState(this.checkBoxTestWLAN.Checked);
+
+            WirelessManager.SetWWANState(this.checkBoxTestWWAN.Checked);
+
+            if (this.checkBoxTestWWAN.Checked)
+            {
+                this.textBoxTestFTP.Text = "Attaching to GPRS ...";
+                Application.DoEvents();
+                if (!this.cmr.Connected)
+                {
+                    this.cmr.Connect(this.textBoxGPRSEntry.Text,
+                        ConnMgr.ConnectionMode.Asynchronous,
+                        this.textBoxGPRSBenutzer.Text,
+                        this.textBoxGPRSKennwort.Text,
+                        this.textBoxGPRSAPN.Text);
+
+                    int maxWait = 30;
+                    while (!cmr.Connected && maxWait-- > 0)
+                    {
+                        Thread.Sleep(1000);
+                    }
+                }
+            }
 
             try
             {
@@ -1006,9 +1562,9 @@ namespace Battery_Test
             this.textBoxLog.Text = string.Empty;
         }
 
-        private void timerFixPositionGPS_Tick(object sender, EventArgs e)
+        private void timerExecGPS_Tick(object sender, EventArgs e)
         {
-            this.timerFixPositionGPS.Enabled = false;
+            this.timerExecGPS.Enabled = false;
             if (this.stateGPSPosition == TaskTestState.EXEC)
             {
                 this.doLog("GPS no fix (" + this.gps_location + ")");
@@ -1032,6 +1588,47 @@ namespace Battery_Test
         {
             // not neccesary to act here, this will be done by the other radiobutton going Checked = false
         }
+
+        private void buttonSkipPhase_Click(object sender, EventArgs e)
+        {
+            this.skipPhase = true;
+            this.timerStateMachine.Interval = 1000;
+            this.timerStateMachine.Enabled = true;
+        }
+
+        private void tabPageConfigTour_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void numericUpDownTourCycleIntervalMinuten_ValueChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                this.numericUpDownTourCycleDisplayAn.Maximum = this.numericUpDownTourCycleIntervalMinuten.Value;
+            }
+            catch
+            {
+            }
+        }
+
+        private void timerRuheUnattended_Tick(object sender, EventArgs e)
+        {
+            if (this.deviceInUnattended)
+            {
+                // this.doLog("Keep Unattended Mode");
+                Form1.SystemIdleTimerReset();
+            }
+            else
+            {
+                this.doLog("Enter Unattended Mode");
+                bool result = (PowerPolicyNotify(PowerMode.UnattendedMode, UNATTENDED_ON) != 0);
+                this.timerManageUnattended.Interval = 60000;
+                this.deviceInUnattended = true;
+                PowerPolicyNotify(PowerMode.SuspendKeyOrPwrButtonPressed, 0);
+            }
+        }
+
 
     }
 }
