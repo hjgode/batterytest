@@ -157,6 +157,7 @@ namespace Trans_o_flex_Battery_Test
 
         private DecodeAssembly da = new DecodeAssembly();
         private CameraAssembly ca = new CameraAssembly();
+
         private WirelessManager wim = new WirelessManager();
         private ConnMgr cmr = new ConnMgr();
 

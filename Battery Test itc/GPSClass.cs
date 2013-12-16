@@ -526,7 +526,7 @@ namespace Battery_Test_itc
             {
                 Port.Open();
             }
-            catch (Exception ee)
+            catch (Exception )
             {
                 //ee = ee;
                 return 1;

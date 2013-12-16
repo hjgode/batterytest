@@ -32,7 +32,7 @@ namespace CameraAssembly
             timer1 = new System.Threading.Timer(timerDelegate, null, System.Threading.Timeout.Infinite, m_iTimeout);
         }
 
-        public void Dispose()
+        public new void Dispose()
         {
             addLog("Dispose...");
             if (cam == null)
@@ -44,6 +44,7 @@ namespace CameraAssembly
             cam.Dispose();
             cam = null;
             addLog("Dispose done.");
+            base.Dispose();
         }
 
         /// <summary>
