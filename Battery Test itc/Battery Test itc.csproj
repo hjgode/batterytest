@@ -48,14 +48,19 @@
   <ItemGroup>
     <Reference Include="Intermec.DataCollection.CF3.5, Version=3.7.0.0, Culture=neutral, PublicKeyToken=acd169b56b6148ba, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\cn51runtimes\Intermec.DataCollection.CF3.5.dll</HintPath>
+      <HintPath>runtimes\Intermec.DataCollection.CF3.5.dll</HintPath>
+    </Reference>
+    <Reference Include="Intermec.DeviceManagement.SmartSystem.ITCSSApi, Version=6.90.0.190, Culture=neutral, PublicKeyToken=acd169b56b6148ba, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>runtimes\Intermec.DeviceManagement.SmartSystem.ITCSSApi.dll</HintPath>
     </Reference>
     <Reference Include="Intermec.Multimedia.Camera.CF35, Version=1.3.5.4, Culture=neutral, PublicKeyToken=acd169b56b6148ba, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\cn51runtimes\Intermec.Multimedia.Camera.CF35.dll</HintPath>
+      <HintPath>runtimes\Intermec.Multimedia.Camera.CF35.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Windowsce.Forms" />
     <Reference Include="Microsoft.WindowsMobile, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" />
+    <Reference Include="Microsoft.WindowsMobile.Status, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" />
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -109,6 +114,33 @@
     <Compile Include="UtilMethods.cs" />
     <Compile Include="UtilsITC.cs" />
     <Compile Include="WirelessManager.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="bcsymbologymapping.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CMemGrabber2.dll" />
+    <Content Include="Intermec.DataCollection.CF3.5.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Intermec.Multimedia.Camera.CF35.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ITCCamera.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ITCCILCNX.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ITCImager.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ITCScan.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ITCSSApi.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CompactFramework.CSharp.targets" />
   <ProjectExtensions>

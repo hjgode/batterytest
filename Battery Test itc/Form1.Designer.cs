@@ -99,6 +99,8 @@
             this.label8 = new System.Windows.Forms.Label();
             this.textBoxDataServer = new System.Windows.Forms.TextBox();
             this.tabPageConfig2 = new System.Windows.Forms.TabPage();
+            this.numericUpDownTourCycleDisplayAn = new System.Windows.Forms.NumericUpDown();
+            this.label21 = new System.Windows.Forms.Label();
             this.checkBoxIncludeTourPhase = new System.Windows.Forms.CheckBox();
             this.numericUpDownTourGPSIntervalSekunden = new System.Windows.Forms.NumericUpDown();
             this.label17 = new System.Windows.Forms.Label();
@@ -131,11 +133,6 @@
             this.checkBoxIncludeRuhePhase = new System.Windows.Forms.CheckBox();
             this.radioButtonRuheUnattended = new System.Windows.Forms.RadioButton();
             this.radioButtonRuheSuspend = new System.Windows.Forms.RadioButton();
-            this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.pictureBox2 = new System.Windows.Forms.PictureBox();
-            this.btnTestCamera = new System.Windows.Forms.Button();
-            this.btnTestScanner = new System.Windows.Forms.Button();
             this.timerPlanScan = new System.Windows.Forms.Timer();
             this.timerPlanData = new System.Windows.Forms.Timer();
             this.timerPlanPhoto = new System.Windows.Forms.Timer();
@@ -145,15 +142,12 @@
             this.timerExecPhoto = new System.Windows.Forms.Timer();
             this.timerStateMachine = new System.Windows.Forms.Timer();
             this.timerExecGPS = new System.Windows.Forms.Timer();
-            this.numericUpDownTourCycleDisplayAn = new System.Windows.Forms.NumericUpDown();
-            this.label21 = new System.Windows.Forms.Label();
             this.tabPageOutput.SuspendLayout();
             this.tabPageConfig1.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPageConfig0.SuspendLayout();
             this.tabPageConfig2.SuspendLayout();
             this.tabPageConfigRuhe.SuspendLayout();
-            this.tabPage1.SuspendLayout();
             this.SuspendLayout();
             // 
             // mainMenu1
@@ -686,9 +680,8 @@
             this.tabControl1.Controls.Add(this.tabPageConfig0);
             this.tabControl1.Controls.Add(this.tabPageConfig1);
             this.tabControl1.Controls.Add(this.tabPageConfig2);
-            this.tabControl1.Controls.Add(this.tabPageOutput);
             this.tabControl1.Controls.Add(this.tabPageConfigRuhe);
-            this.tabControl1.Controls.Add(this.tabPage1);
+            this.tabControl1.Controls.Add(this.tabPageOutput);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControl1.Location = new System.Drawing.Point(0, 0);
             this.tabControl1.Name = "tabControl1";
@@ -956,8 +949,38 @@
             this.tabPageConfig2.Controls.Add(this.numericUpDownTourLaufzeitStunden);
             this.tabPageConfig2.Location = new System.Drawing.Point(0, 0);
             this.tabPageConfig2.Name = "tabPageConfig2";
-            this.tabPageConfig2.Size = new System.Drawing.Size(240, 245);
+            this.tabPageConfig2.Size = new System.Drawing.Size(232, 242);
             this.tabPageConfig2.Text = "Tour";
+            // 
+            // numericUpDownTourCycleDisplayAn
+            // 
+            this.numericUpDownTourCycleDisplayAn.Location = new System.Drawing.Point(153, 301);
+            this.numericUpDownTourCycleDisplayAn.Maximum = new decimal(new int[] {
+            60,
+            0,
+            0,
+            0});
+            this.numericUpDownTourCycleDisplayAn.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.numericUpDownTourCycleDisplayAn.Name = "numericUpDownTourCycleDisplayAn";
+            this.numericUpDownTourCycleDisplayAn.Size = new System.Drawing.Size(67, 22);
+            this.numericUpDownTourCycleDisplayAn.TabIndex = 94;
+            this.numericUpDownTourCycleDisplayAn.Value = new decimal(new int[] {
+            2,
+            0,
+            0,
+            0});
+            // 
+            // label21
+            // 
+            this.label21.Font = new System.Drawing.Font("Tahoma", 8F, System.Drawing.FontStyle.Regular);
+            this.label21.Location = new System.Drawing.Point(6, 301);
+            this.label21.Name = "label21";
+            this.label21.Size = new System.Drawing.Size(126, 22);
+            this.label21.Text = "Display an (Minuten)";
             // 
             // checkBoxIncludeTourPhase
             // 
@@ -1292,7 +1315,7 @@
             this.tabPageConfigRuhe.Controls.Add(this.radioButtonRuheSuspend);
             this.tabPageConfigRuhe.Location = new System.Drawing.Point(0, 0);
             this.tabPageConfigRuhe.Name = "tabPageConfigRuhe";
-            this.tabPageConfigRuhe.Size = new System.Drawing.Size(240, 245);
+            this.tabPageConfigRuhe.Size = new System.Drawing.Size(232, 242);
             this.tabPageConfigRuhe.Text = "Ruhe";
             // 
             // label27
@@ -1374,50 +1397,6 @@
             this.radioButtonRuheSuspend.TabIndex = 92;
             this.radioButtonRuheSuspend.Text = "Gerät in Suspend (Power Down)";
             // 
-            // tabPage1
-            // 
-            this.tabPage1.BackColor = System.Drawing.Color.PaleTurquoise;
-            this.tabPage1.Controls.Add(this.textBox1);
-            this.tabPage1.Controls.Add(this.pictureBox2);
-            this.tabPage1.Controls.Add(this.btnTestCamera);
-            this.tabPage1.Controls.Add(this.btnTestScanner);
-            this.tabPage1.Location = new System.Drawing.Point(0, 0);
-            this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Size = new System.Drawing.Size(232, 242);
-            this.tabPage1.Text = "TEST";
-            // 
-            // textBox1
-            // 
-            this.textBox1.Location = new System.Drawing.Point(7, 44);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(226, 21);
-            this.textBox1.TabIndex = 2;
-            // 
-            // pictureBox2
-            // 
-            this.pictureBox2.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.pictureBox2.Location = new System.Drawing.Point(116, 96);
-            this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(117, 146);
-            // 
-            // btnTestCamera
-            // 
-            this.btnTestCamera.Location = new System.Drawing.Point(7, 96);
-            this.btnTestCamera.Name = "btnTestCamera";
-            this.btnTestCamera.Size = new System.Drawing.Size(84, 31);
-            this.btnTestCamera.TabIndex = 0;
-            this.btnTestCamera.Text = "test camera";
-            this.btnTestCamera.Click += new System.EventHandler(this.btnTestCamera_Click);
-            // 
-            // btnTestScanner
-            // 
-            this.btnTestScanner.Location = new System.Drawing.Point(7, 7);
-            this.btnTestScanner.Name = "btnTestScanner";
-            this.btnTestScanner.Size = new System.Drawing.Size(84, 31);
-            this.btnTestScanner.TabIndex = 0;
-            this.btnTestScanner.Text = "test scanner";
-            this.btnTestScanner.Click += new System.EventHandler(this.btnTestScanner_Click);
-            // 
             // timerPlanScan
             // 
             this.timerPlanScan.Tick += new System.EventHandler(this.timerPlanScan_Tick);
@@ -1457,36 +1436,6 @@
             this.timerExecGPS.Interval = 10000;
             this.timerExecGPS.Tick += new System.EventHandler(this.timerExecGPS_Tick);
             // 
-            // numericUpDownTourCycleDisplayAn
-            // 
-            this.numericUpDownTourCycleDisplayAn.Location = new System.Drawing.Point(153, 301);
-            this.numericUpDownTourCycleDisplayAn.Maximum = new decimal(new int[] {
-            60,
-            0,
-            0,
-            0});
-            this.numericUpDownTourCycleDisplayAn.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-            this.numericUpDownTourCycleDisplayAn.Name = "numericUpDownTourCycleDisplayAn";
-            this.numericUpDownTourCycleDisplayAn.Size = new System.Drawing.Size(67, 22);
-            this.numericUpDownTourCycleDisplayAn.TabIndex = 94;
-            this.numericUpDownTourCycleDisplayAn.Value = new decimal(new int[] {
-            2,
-            0,
-            0,
-            0});
-            // 
-            // label21
-            // 
-            this.label21.Font = new System.Drawing.Font("Tahoma", 8F, System.Drawing.FontStyle.Regular);
-            this.label21.Location = new System.Drawing.Point(6, 301);
-            this.label21.Name = "label21";
-            this.label21.Size = new System.Drawing.Size(126, 22);
-            this.label21.Text = "Display an (Minuten)";
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
@@ -1508,7 +1457,6 @@
             this.tabPageConfig0.ResumeLayout(false);
             this.tabPageConfig2.ResumeLayout(false);
             this.tabPageConfigRuhe.ResumeLayout(false);
-            this.tabPage1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -1595,11 +1543,6 @@
         private System.Windows.Forms.Label label18;
         private System.Windows.Forms.RadioButton radioButtonActive;
         private System.Windows.Forms.RadioButton radioButtonPassive;
-        private System.Windows.Forms.TabPage tabPage1;
-        private System.Windows.Forms.TextBox textBox1;
-        private System.Windows.Forms.PictureBox pictureBox2;
-        private System.Windows.Forms.Button btnTestCamera;
-        private System.Windows.Forms.Button btnTestScanner;
         private System.Windows.Forms.CheckBox checkBoxTestWWAN;
         private System.Windows.Forms.CheckBox checkBoxTestWLAN;
         private System.Windows.Forms.Label label26;

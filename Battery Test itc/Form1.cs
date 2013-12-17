@@ -951,7 +951,11 @@ namespace Battery_Test_itc
                         this.stateSnapPhoto = TaskTestState.EXEC;
                         try
                         {
+#if HSM
                             this.ca.Connect(this.pictureBox1.Handle, null, null);
+#else
+                            this.ca.Connect(ref this.pictureBox1, null, null);
+#endif
                             long resolutionSetting;
                             this.ca.GetResolutionCount(out resolutionSetting);
                             this.ca.SetResolution((uint)(resolutionSetting - 1));
@@ -1397,14 +1401,15 @@ namespace Battery_Test_itc
 
         private void menuItemStart_Click(object sender, EventArgs e)
         {
-            if (this.tabControl1.SelectedIndex == 1)
-            {
-                this.doStartBelade();
-            }
-            if (this.tabControl1.SelectedIndex == 2)
-            {
-                this.doStartTour();
-            }
+            this.doStartTest();
+            //if (this.tabControl1.SelectedIndex == 1)
+            //{
+            //    this.doStartBelade();
+            //}
+            //if (this.tabControl1.SelectedIndex == 2)
+            //{
+            //    this.doStartTour();
+            //}
         }
 
 
@@ -1541,46 +1546,46 @@ namespace Battery_Test_itc
 
         }
 
-        private void btnTestScanner_Click(object sender, EventArgs e)
-        {
-            ca.Disconnect();
+        //private void btnTestScanner_Click(object sender, EventArgs e)
+        //{
+        //    ca.Disconnect();
 
-            da.Disconnect();
-            da.Connect();
-            da.ScanTimeout = 15000; //15 seconds
-            da.DecodeEvent+=new DecodeAssembly.DecodeEventHandler(da_DecodeEvent1);
-            da.ScanBarcode();
-        }
-        delegate void changeTextCallback(string s);
-        void changeText(string s)
-        {
-            if (this.textBox1.InvokeRequired)
-            {
-                changeTextCallback d = new changeTextCallback(changeText);
-                this.Invoke(d, new object[] { s });
-            }
-            else
-            {
-                textBox1.Text = s;
-            }
-        }
-        void da_DecodeEvent1(object sender, DecodeEventArgs e)
-        {
-            changeText(e.sData);
-        }
+        //    da.Disconnect();
+        //    da.Connect();
+        //    da.ScanTimeout = 15000; //15 seconds
+        //    da.DecodeEvent+=new DecodeAssembly.DecodeEventHandler(da_DecodeEvent1);
+        //    da.ScanBarcode();
+        //}
+        //delegate void changeTextCallback(string s);
+        //void changeText(string s)
+        //{
+        //    if (this.textBox1.InvokeRequired)
+        //    {
+        //        changeTextCallback d = new changeTextCallback(changeText);
+        //        this.Invoke(d, new object[] { s });
+        //    }
+        //    else
+        //    {
+        //        textBox1.Text = s;
+        //    }
+        //}
+        //void da_DecodeEvent1(object sender, DecodeEventArgs e)
+        //{
+        //    changeText(e.sData);
+        //}
 
-        private void btnTestCamera_Click(object sender, EventArgs e)
-        {
-            da.Disconnect();
+        //private void btnTestCamera_Click(object sender, EventArgs e)
+        //{
+        //    da.Disconnect();
 
-            ca.Disconnect();
-            ca.CameraEvent -= ca_CameraEvent;
-            ca.Dispose();
-            ca = new CameraAssembly.CameraAssembly();
-            ca.Connect(ref pictureBox2, null, null);
-            ca.CameraEvent += new CameraAssembly.CameraAssembly.CameraEventHandler(ca_CameraEvent1);
-            ca.StartPreview();
-        }
+        //    ca.Disconnect();
+        //    ca.CameraEvent -= ca_CameraEvent;
+        //    ca.Dispose();
+        //    ca = new CameraAssembly.CameraAssembly();
+        //    ca.Connect(ref pictureBox2, null, null);
+        //    ca.CameraEvent += new CameraAssembly.CameraAssembly.CameraEventHandler(ca_CameraEvent1);
+        //    ca.StartPreview();
+        //}
 
         void ca_CameraEvent1(object s, CameraEventArgs args)
         {
