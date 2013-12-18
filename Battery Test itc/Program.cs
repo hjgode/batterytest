@@ -13,7 +13,14 @@ namespace Battery_Test_itc
         [MTAThread]
         static void Main()
         {
-            Application.Run(new Form1());
+            try
+            {
+                Application.Run(new batteryTestfrm());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Exception: " + ex.Message + "\n" + ex.StackTrace);
+            }
         }
     }
 }

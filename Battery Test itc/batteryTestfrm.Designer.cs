@@ -1,6 +1,6 @@
 ﻿namespace Battery_Test_itc
 {
-    partial class Form1
+    partial class batteryTestfrm
     {
         /// <summary>
         /// Required designer variable.

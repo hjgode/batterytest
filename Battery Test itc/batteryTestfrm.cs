@@ -35,9 +35,9 @@ using Microsoft.Win32;
 
 namespace Battery_Test_itc
 {
-    public partial class Form1 : Form
+    public partial class batteryTestfrm : Form
     {
-        public Form1()
+        public batteryTestfrm()
         {
             InitializeComponent();
         }
@@ -296,8 +296,8 @@ namespace Battery_Test_itc
 
         private void doStartRuhe()
         {
-            Form1.SystemIdleTimerReset();
-            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+            batteryTestfrm.SystemIdleTimerReset();
+            batteryTestfrm.SetSystemPowerState(IntPtr.Zero, batteryTestfrm.POWER_STATE_ON, 0);
 
             // V 1.5.3
             this.complained = false;
@@ -341,8 +341,8 @@ namespace Battery_Test_itc
 
         private void doStartBelade()
         {
-            Form1.SystemIdleTimerReset();
-            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+            batteryTestfrm.SystemIdleTimerReset();
+            batteryTestfrm.SetSystemPowerState(IntPtr.Zero, batteryTestfrm.POWER_STATE_ON, 0);
 
             // V 1.5.3
             this.complained = false;
@@ -452,8 +452,8 @@ namespace Battery_Test_itc
 
         private void doStartTour()
         {
-            Form1.SystemIdleTimerReset();
-            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+            batteryTestfrm.SystemIdleTimerReset();
+            batteryTestfrm.SetSystemPowerState(IntPtr.Zero, batteryTestfrm.POWER_STATE_ON, 0);
 
             // V 1.5.3
             this.complained = false;
@@ -808,8 +808,8 @@ namespace Battery_Test_itc
                         if (timeSpan.CompareTo(this.testSpan) > 0) // V1.5.2
                         {
                             this.doLog("Ruhephase ending");
-                            Form1.SystemIdleTimerReset();
-                            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+                            batteryTestfrm.SystemIdleTimerReset();
+                            batteryTestfrm.SetSystemPowerState(IntPtr.Zero, batteryTestfrm.POWER_STATE_ON, 0);
 
                             this.timerManageUnattended.Enabled = false;
                             this.deviceInUnattended = false;
@@ -1145,8 +1145,8 @@ namespace Battery_Test_itc
 
                     if (this.stopTest && this.stateFTPSession == TaskTestState.IDLE && this.stateSnapPhoto == TaskTestState.IDLE && this.stateScanBarcode == TaskTestState.IDLE && this.stateGPSPosition == TaskTestState.IDLE)
                     {
-                        Form1.SystemIdleTimerReset();
-                        Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+                        batteryTestfrm.SystemIdleTimerReset();
+                        batteryTestfrm.SetSystemPowerState(IntPtr.Zero, batteryTestfrm.POWER_STATE_ON, 0);
 
                         // V1.5.3
                         this.timerPlanScan.Enabled = false; // V1.3.0 
@@ -1415,8 +1415,8 @@ namespace Battery_Test_itc
 
         private void timerCycleInterval_Tick(object sender, EventArgs e)
         {
-            Form1.SystemIdleTimerReset();
-            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+            batteryTestfrm.SystemIdleTimerReset();
+            batteryTestfrm.SetSystemPowerState(IntPtr.Zero, batteryTestfrm.POWER_STATE_ON, 0);
 
             if (this.stateTourCycle == TaskTestState.IDLE)
             {
@@ -1449,6 +1449,33 @@ namespace Battery_Test_itc
         private void buttonTestFTP_Click(object sender, EventArgs e)
         {
             this.doLog("Test FTP: (1) ");
+
+            this.textBoxTestFTP.Text = "Setting radiostate ...";
+            Application.DoEvents();
+
+            WirelessManager.SetWLANState(this.checkBoxTestWLAN.Checked);
+
+            WirelessManager.SetWWANState(this.checkBoxTestWWAN.Checked);
+
+            if (this.checkBoxTestWWAN.Checked)
+            {
+                this.textBoxTestFTP.Text = "Attaching to GPRS ...";
+                Application.DoEvents();
+                if (!this.cmr.Connected)
+                {
+                    this.cmr.Connect(this.textBoxGPRSEntry.Text,
+                        ConnMgr.ConnectionMode.Asynchronous,
+                        this.textBoxGPRSBenutzer.Text,
+                        this.textBoxGPRSKennwort.Text,
+                        this.textBoxGPRSAPN.Text);
+
+                    int maxWait = 30;
+                    while (!cmr.Connected && maxWait-- > 0)
+                    {
+                        Thread.Sleep(1000);
+                    }
+                }
+            }
 
             try
             {
@@ -1669,8 +1696,8 @@ namespace Battery_Test_itc
             // V1.5.2
             this.timerManageUnattended.Enabled = false;
 
-            Form1.SystemIdleTimerReset();
-            Form1.SetSystemPowerState(IntPtr.Zero, Form1.POWER_STATE_ON, 0);
+            batteryTestfrm.SystemIdleTimerReset();
+            batteryTestfrm.SetSystemPowerState(IntPtr.Zero, batteryTestfrm.POWER_STATE_ON, 0);
 
             // V1.5.2
             int secondsDisplayOn = (int)(this.numericUpDownTourCycleDisplayAn.Value) * 60;
@@ -1695,7 +1722,7 @@ namespace Battery_Test_itc
             if (this.deviceInUnattended)
             {
                 // this.doLog("Keep Unattended Mode");
-                Form1.SystemIdleTimerReset();
+                batteryTestfrm.SystemIdleTimerReset();
             }
             else
             {

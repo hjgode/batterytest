@@ -474,6 +474,68 @@ namespace Battery_Test_itc
                 OnGPSDateEventHandler(this, e);
         }
 
+        //small helper class
+        class myRegistry
+        {
+            public static int GetStringValue(RegistryKey rKey, string sSubKey, string sValueName, ref string sValue)
+            {
+                string sRet="";
+                int iRet = -1;
+                try
+                {
+                    sRet = (string)rKey.OpenSubKey(sSubKey).GetValue(sValueName);
+                    iRet = 0;
+                }
+                catch (Exception)
+                {
+                }
+                if (iRet==0)
+                    sValue = sRet;
+                return iRet;
+            }
+        }
+        private string GetGPSRAWdirectPort()
+        {
+            string szStr = "";
+            if (myRegistry.GetStringValue(Registry.LocalMachine,// HKLM,
+                            "System\\CurrentControlSet\\GPS Intermediate Driver\\Drivers\\SWIGPSModem",
+                            "CommPort",
+                            ref szStr)
+                == 0)
+            {
+                return szStr;
+            }
+            return "";
+        }
+        private string GetGPSPort()
+        {
+            string szStr = "";
+            if (myRegistry.GetStringValue(Registry.LocalMachine,// HKLM,
+                            "System\\CurrentControlSet\\GPS Intermediate Driver\\Multiplexer",
+                            "DriverInterface",
+                            ref szStr)
+                == 0)
+            {
+                return szStr;
+            }
+            else
+            {
+                if (myRegistry.GetStringValue(Registry.LocalMachine,// HKLM,
+                    "System\\CurrentControlSet\\GPS Intermediate Driver\\Drivers",
+                    "CurrentDriver",
+                    ref szStr) == 0)
+                {
+                    string szPath = "System\\CurrentControlSet\\GPS Intermediate Driver\\Drivers\\" + szStr;
+                    if (myRegistry.GetStringValue(Registry.LocalMachine,// .HKLM, 
+                        szPath, "CommPort", ref szStr) == 0)
+                    {
+                        return szStr;
+                    }
+                }
+            }
+            return "";
+        }
+        
         public GPS(string strPortName, int baudRate)
         {
             Data = new GPSData();
