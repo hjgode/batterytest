@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 using System.Collections;
 using System.ComponentModel;
 
-namespace MS.Wireless.Network
+namespace MS.Embedded.Wireless.Network
 {
     /// <summary>
     /// Class to provide access to the Win32 ConnMgr API. 	
     /// </summary>
-    public class ConnMgr:IDisposable
+    public class ConnMgr : IDisposable
     {
         private const int MAX_STRING = 250;
 
@@ -257,7 +257,7 @@ namespace MS.Wireless.Network
             return true;
         }
 
-        
+
         /// <summary>
         /// Class Destructor
         /// </summary>
@@ -273,7 +273,7 @@ namespace MS.Wireless.Network
             }
             finally
             {
-//                this.Finalize();
+                //                this.Finalize();
             }
         }
 
@@ -1072,13 +1072,13 @@ namespace MS.Wireless.Network
             return intPtr;
         }
 
-        [DllImport("coredll.dll", EntryPoint="LocalAlloc", SetLastError=true)]
+        [DllImport("coredll.dll", EntryPoint = "LocalAlloc", SetLastError = true)]
         private static extern IntPtr sysLocalAlloc(int uFlags, int uBytes);
 
-        [DllImport("coredll.dll", EntryPoint="LocalFree", SetLastError=true)]
+        [DllImport("coredll.dll", EntryPoint = "LocalFree", SetLastError = true)]
         private static extern IntPtr sysLocalFree(IntPtr hMem);
 
-        [DllImport("coredll.dll", EntryPoint="LocalReAlloc", SetLastError=true)]
+        [DllImport("coredll.dll", EntryPoint = "LocalReAlloc", SetLastError = true)]
         private static extern IntPtr sysLocalReAlloc(IntPtr hMem, int uBytes, int fuFlags);
     }
 }

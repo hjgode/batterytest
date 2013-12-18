@@ -19,15 +19,15 @@ using HANDLE = System.IntPtr;
     using HSM.Embedded.Decoding;
     using HSM.Embedded.Camera;
     using HSM.Embedded.Utility;
-    using HSM.Embedded.Wireless;
-    using HSM.Embedded.Wireless.Network;
-    using HSM.Embedded.WirelessAssembly;
+    using HSM.Embedded.Wireless;            //???         
+    using HSM.Embedded.Wireless.Network;    //connection manager and SIM code
+    using HSM.Embedded.WirelessAssembly;    //WirelessManager: general info about BT, WLAN, WWAN
 #else
-    using DecodeAssemblyITC;
-    using CameraAssembly;
+    using ITC.Embedded.Decoding;
+    using ITC.Embedded.Camera;
     using ITC.Embedded.WirelessAssembly;
-    using MS.Wireless.Network;  //cloned HSM.Embedded.Network code
-    using MS.Embedded.Utility;  //cloned HSM.Embedded.Utility
+    using MS.Embedded.Wireless.Network;  //cloned HSM.Embedded.Network code
+    using ITC.Embedded.Utility;  //cloned HSM.Embedded.Utility
 #endif
 
 using System.Runtime.InteropServices;
@@ -177,7 +177,8 @@ namespace Battery_Test_itc
         private ConnMgr cmr = new ConnMgr();
 #else
         DecodeAssembly da = new DecodeAssembly(); //Intermec.DataCollection.BarcodeReader bcr;
-        CameraAssembly.CameraAssembly ca = new CameraAssembly.CameraAssembly();
+        //CameraAssembly.CameraAssembly ca = new CameraAssembly.CameraAssembly();
+        CameraAssembly ca = new CameraAssembly();
         private WirelessManager wim = new WirelessManager();
         private ConnMgr cmr = new ConnMgr();
 #endif
@@ -255,13 +256,13 @@ namespace Battery_Test_itc
             {
             }
             this.da.DecodeEvent += new DecodeAssembly.DecodeEventHandler(da_DecodeEvent);
-            this.ca.CameraEvent += new CameraAssembly.CameraAssembly.CameraEventHandler(ca_CameraEvent);
+            this.ca.CameraEvent += new CameraAssembly.CameraEventHandler(ca_CameraEvent);
         }
 
-        void ca_CameraEvent(object sender, CameraAssembly.CameraEventArgs e)
+        void ca_CameraEvent(object sender, CameraEventArgs e)
         {
             this.doLog("Photo snapped " + e.TaskCode.ToString());
-            if (e.TaskCode == CameraAssembly.CameraTaskCodes.ImageCaptureComplete)
+            if (e.TaskCode == CameraTaskCodes.ImageCaptureComplete)
             {
                 this.stateSnapPhoto = TaskTestState.DONE;
             }
@@ -279,7 +280,7 @@ namespace Battery_Test_itc
 
         private void doRefreshOutputStatusDisplay()
         {
-            int akkuLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
+            int akkuLevel = ITC.Embedded.Utility.SystemNotification.GetBatteryLife();
             this.labelStartzeit.Text = this.startTime.ToString("HH:mm:ss");
             this.labelTestdauer.Text = this.timeSpan.ToString().Split('.')[0];
             this.labelAnzahlBarcodeScans.Text = this.numScanBarcodes.ToString();
@@ -310,7 +311,7 @@ namespace Battery_Test_itc
             WirelessManager.SetWWANState(false);
             WirelessManager.SetWLANState(false);
 
-            this.startLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
+            this.startLevel = ITC.Embedded.Utility.SystemNotification.GetBatteryLife();
             this.lastLevel = this.startLevel;
             this.numTotalDataBytes = 0;
 
@@ -382,7 +383,7 @@ namespace Battery_Test_itc
             }
 
 
-            this.startLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
+            this.startLevel = ITC.Embedded.Utility.SystemNotification.GetBatteryLife();
             this.lastLevel = this.startLevel;
             this.numTotalDataBytes = 0;
 
@@ -487,7 +488,7 @@ namespace Battery_Test_itc
                 }
             }
 
-            this.startLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
+            this.startLevel = ITC.Embedded.Utility.SystemNotification.GetBatteryLife();
             this.lastLevel = this.startLevel;
             this.numTotalDataBytes = 0;
 
@@ -791,7 +792,7 @@ namespace Battery_Test_itc
                             this.doLog("Wakeup nach: " + this.timeSpan.ToString().Split('.')[0]);
 
                             // V2.5.2
-                            this.lastLevel = HSM.Embedded.Utility.SystemNotification.GetBatteryLife();
+                            this.lastLevel = ITC.Embedded.Utility.SystemNotification.GetBatteryLife();
                             this.doLog("Akku " + this.lastLevel.ToString() + "%");
 
                             this.timerStateMachine.Enabled = true;
@@ -1113,7 +1114,7 @@ namespace Battery_Test_itc
 
                             }
 
-                            this.doLog("Akku " + HSM.Embedded.Utility.SystemNotification.GetBatteryLife().ToString() + "%");
+                            this.doLog("Akku " + ITC.Embedded.Utility.SystemNotification.GetBatteryLife().ToString() + "%");
 
                             // this.timerSecond.Enabled = false; // V1.3.0 
                             // V1.5.0 jump to next major test

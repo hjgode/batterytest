@@ -3,7 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DecodeAssemblyITC
+namespace ITC.Embedded.Decoding
 {
     public class DecodeEventArgs
     {

@@ -1,0 +1,90 @@
+15:44:50 Testdauer Beladephase: 1 Stunde(n)
+15:44:50 Akku 100%
+15:44:50 Scan jede 18 Sekunde(n)
+15:44:50 Photo jede 18 Sekunde(n)
+15:44:51 Test Belade gestart
+15:45:11 Scan #1
+15:45:22 Photo #1
+15:45:27 Photo snapped ImageCaptureComplete
+15:45:27 Photo skipped (EXEC)
+15:45:36 Scan #2
+15:45:45 Scan skipped (DONE)
+15:45:47 Photo #2
+15:45:52 Photo snapped ImageCaptureComplete
+15:46:06 Scan #3
+15:46:17 Photo #3
+15:46:21 Photo skipped (EXEC)
+15:46:22 Photo snapped ImageCaptureComplete
+15:46:32 Scan #4
+15:46:39 Scan skipped (DONE)
+15:46:42 Photo #4
+15:46:47 Photo snapped ImageCaptureComplete
+15:47:02 Scan #5
+15:47:12 Photo #5
+15:47:15 Photo skipped (EXEC)
+15:47:17 Photo snapped ImageCaptureComplete
+15:47:27 Scan #6
+15:47:33 Scan skipped (EXEC)
+15:47:37 Photo #6
+15:47:42 Photo snapped ImageCaptureComplete
+15:47:52 Scan #7
+15:48:03 Photo #7
+15:48:07 Photo snapped ImageCaptureComplete
+15:48:09 Photo skipped (DONE)
+15:48:17 Scan #8
+15:48:32 Scan #9
+15:48:43 Photo #8
+15:48:45 Photo skipped (EXEC)
+15:48:48 Photo snapped ImageCaptureComplete
+15:48:57 Scan #10
+15:49:04 Scan skipped (EXEC)
+15:49:08 Photo #9
+15:49:13 Photo snapped ImageCaptureComplete
+15:49:22 Scan #11
+15:49:33 Photo #10
+15:49:38 Photo snapped ImageCaptureComplete
+15:49:39 Photo skipped (DONE)
+15:49:47 Scan #12
+15:50:02 Scan #13
+15:50:13 Photo #11
+15:50:15 Photo skipped (EXEC)
+15:50:18 Photo snapped ImageCaptureComplete
+15:50:28 Scan #14
+15:50:34 Scan skipped (EXEC)
+15:50:38 Photo #12
+15:50:43 Photo snapped ImageCaptureComplete
+15:50:53 Scan #15
+15:51:05 Photo #13
+15:51:09 Photo snapped ImageCaptureComplete
+15:51:10 Photo skipped (DONE)
+15:51:18 Scan #16
+15:51:28 Scan skipped (DONE)
+15:51:29 Photo #14
+15:51:34 Photo snapped ImageCaptureComplete
+15:51:48 Scan #17
+15:51:59 Photo #15
+15:52:04 Photo skipped (EXEC)
+15:52:04 Photo snapped ImageCaptureComplete
+15:52:13 Scan #18
+15:52:22 Scan skipped (DONE)
+15:52:24 Photo #16
+15:52:29 Photo snapped ImageCaptureComplete
+15:52:43 Scan #19
+15:52:54 Photo #17
+15:52:58 Photo skipped (EXEC)
+15:52:59 Photo snapped ImageCaptureComplete
+15:53:09 Scan #20
+15:53:16 Scan skipped (DONE)
+15:53:19 Photo #18
+15:53:24 Photo snapped ImageCaptureComplete
+15:53:39 Scan #21
+15:53:49 Photo #19
+15:53:52 Photo skipped (EXEC)
+15:53:55 Photo snapped ImageCaptureComplete
+15:54:04 Scan #22
+15:54:11 Scan skipped (EXEC)
+15:54:15 Photo #20
+15:54:20 Test abbrechen ...
+15:54:22 waiting for sub test to complete
+15:54:22 Photo snapped ImageCaptureComplete
+15:54:23 Photo snapped ImageCaptureComplete

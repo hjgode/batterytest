@@ -46,26 +46,10 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Intermec.DataCollection.CF3.5, Version=3.7.0.0, Culture=neutral, PublicKeyToken=acd169b56b6148ba, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>runtimes\Intermec.DataCollection.CF3.5.dll</HintPath>
-    </Reference>
-    <Reference Include="Intermec.DeviceManagement.SmartSystem.ITCSSApi, Version=6.90.0.190, Culture=neutral, PublicKeyToken=acd169b56b6148ba, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>runtimes\Intermec.DeviceManagement.SmartSystem.ITCSSApi.dll</HintPath>
-    </Reference>
-    <Reference Include="Intermec.Multimedia.Camera.CF35, Version=1.3.5.4, Culture=neutral, PublicKeyToken=acd169b56b6148ba, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>runtimes\Intermec.Multimedia.Camera.CF35.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Windowsce.Forms" />
     <Reference Include="Microsoft.WindowsMobile, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" />
-    <Reference Include="Microsoft.WindowsMobile.Status, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" />
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Web.Services" />
-    <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
@@ -73,13 +57,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BarcodeAssemblyITC.cs" />
-    <Compile Include="CameraAssembly.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="CameraEventArgs.cs" />
-    <Compile Include="ConnMgr.cs" />
-    <Compile Include="DecodeEventArgs.cs" />
     <Compile Include="batteryTestfrm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -87,8 +64,6 @@
       <DependentUpon>batteryTestfrm.cs</DependentUpon>
     </Compile>
     <Compile Include="GPSClass.cs" />
-    <Compile Include="ICameraAssembly.cs" />
-    <Compile Include="IDecodeAssembly.cs" />
     <Compile Include="OpenNetCFFTPClient\Enums.cs" />
     <Compile Include="OpenNetCFFTPClient\FTP.cs" />
     <Compile Include="OpenNetCFFTPClient\FTPException.cs" />
@@ -110,13 +85,28 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
-    <Compile Include="Registry.cs" />
-    <Compile Include="UtilMethods.cs" />
-    <Compile Include="UtilsITC.cs" />
-    <Compile Include="WirelessManager.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="CMemGrabber2.dll" />
+    <ProjectReference Include="ITC.Embedded.Camera\ITC.Embedded.Camera\ITC.Embedded.Camera.csproj">
+      <Project>{15291054-B555-441D-B6C6-DBECD6B1D1FD}</Project>
+      <Name>ITC.Embedded.Camera</Name>
+    </ProjectReference>
+    <ProjectReference Include="ITC.Embedded.Decoding\ITC.Embedded.Decoding\ITC.Embedded.Decoding.csproj">
+      <Project>{A56C28CD-21DF-4D09-B31B-D24DFD52A655}</Project>
+      <Name>ITC.Embedded.Decoding</Name>
+    </ProjectReference>
+    <ProjectReference Include="ITC.Embedded.Utility\ITC.Embedded.Utility\ITC.Embedded.Utility.csproj">
+      <Project>{7DFF8E67-0A2F-409E-B9A9-B70094A24A59}</Project>
+      <Name>ITC.Embedded.Utility</Name>
+    </ProjectReference>
+    <ProjectReference Include="ITC.Embedded.WirelessAssembly\ITC.Embedded.WirelessAssembly\ITC.Embedded.WirelessAssembly.csproj">
+      <Project>{1955A25F-89C0-481E-8AE2-BE811EB0280B}</Project>
+      <Name>ITC.Embedded.WirelessAssembly</Name>
+    </ProjectReference>
+    <ProjectReference Include="MS.Wireless.Network\MS.Wireless.Network\MS.Embedded.Wireless.Network.csproj">
+      <Project>{EC22D42E-E1B5-472D-9EF2-FACBF6275BAA}</Project>
+      <Name>MS.Embedded.Wireless.Network</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CompactFramework.CSharp.targets" />
   <ProjectExtensions>

@@ -1,0 +1,19 @@
+15:19:42 Testdauer Beladephase: 1 Stunde(n)
+15:19:42 Akku 100%
+15:19:42 Scan jede 18 Sekunde(n)
+15:19:42 Photo jede 18 Sekunde(n)
+15:19:42 Test Belade gestart
+15:20:03 Scan #1
+15:20:13 Photo #1
+15:20:18 Photo skipped (EXEC)
+15:20:20 Photo snapped ImageCaptureComplete
+15:20:28 Scan #2
+15:20:36 Scan skipped (DONE)
+15:20:38 Photo #2
+15:20:44 Photo snapped ImageCaptureComplete
+15:20:58 Scan #3
+15:21:09 Photo #3
+15:21:11 Test abbrechen ...
+15:21:12 waiting for sub test to complete
+15:21:14 Photo snapped ImageCaptureComplete
+15:21:15 Photo snapped ImageCaptureComplete

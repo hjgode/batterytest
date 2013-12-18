@@ -434,33 +434,6 @@ namespace Battery_Test_itc
 
     class GPS
     {
-        public static string GetGPSPort()
-        {
-            string szStr = "";
-            if (PInvokeLibrary2.Registry.GetStringValue(PInvokeLibrary2.Registry.HKLM,
-                            "System\\CurrentControlSet\\GPS Intermediate Driver\\Multiplexer",
-                            "DriverInterface",
-                            ref szStr)
-                == 0)
-            {
-                return szStr;
-            }
-            else
-            {
-                if (PInvokeLibrary2.Registry.GetStringValue(PInvokeLibrary2.Registry.HKLM,
-                    "System\\CurrentControlSet\\GPS Intermediate Driver\\Drivers",
-                    "CurrentDriver",
-                    ref szStr) == 0)
-                {
-                    string szPath = "System\\CurrentControlSet\\GPS Intermediate Driver\\Drivers\\" + szStr;
-                    if (PInvokeLibrary2.Registry.GetStringValue(PInvokeLibrary2.Registry.HKLM, szPath, "CommPort", ref szStr) == 0)
-                    {
-                        return szStr;
-                    }
-                }
-            }
-            return "";
-        }
 
         public static System.IO.Ports.SerialPort Port;
         public GPSData Data;
@@ -507,6 +480,35 @@ namespace Battery_Test_itc
             }
             return "";
         }
+
+        //public static string GetGPSPort()
+        //{
+        //    string szStr = "";
+        //    if (PInvokeLibrary2.Registry.GetStringValue(PInvokeLibrary2.Registry.HKLM,
+        //                    "System\\CurrentControlSet\\GPS Intermediate Driver\\Multiplexer",
+        //                    "DriverInterface",
+        //                    ref szStr)
+        //        == 0)
+        //    {
+        //        return szStr;
+        //    }
+        //    else
+        //    {
+        //        if (PInvokeLibrary2.Registry.GetStringValue(PInvokeLibrary2.Registry.HKLM,
+        //            "System\\CurrentControlSet\\GPS Intermediate Driver\\Drivers",
+        //            "CurrentDriver",
+        //            ref szStr) == 0)
+        //        {
+        //            string szPath = "System\\CurrentControlSet\\GPS Intermediate Driver\\Drivers\\" + szStr;
+        //            if (PInvokeLibrary2.Registry.GetStringValue(PInvokeLibrary2.Registry.HKLM, szPath, "CommPort", ref szStr) == 0)
+        //            {
+        //                return szStr;
+        //            }
+        //        }
+        //    }
+        //    return "";
+        //}
+
         private string GetGPSPort()
         {
             string szStr = "";

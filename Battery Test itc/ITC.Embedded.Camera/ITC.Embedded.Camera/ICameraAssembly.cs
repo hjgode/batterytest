@@ -3,7 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 
-namespace CameraAssembly
+namespace ITC.Embedded.Camera
 {
     public delegate void CameraEventHandler(object sender, CameraEventArgs e);
     interface ICameraAssembly
