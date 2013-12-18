@@ -60,7 +60,9 @@
     <Compile Include="CameraAssembly.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="CameraEventArgs.cs" />
+    <Compile Include="CameraEventArgs.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="ICameraAssembly.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

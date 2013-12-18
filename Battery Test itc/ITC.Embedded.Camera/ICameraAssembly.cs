@@ -5,13 +5,13 @@ using System.Text;
 
 namespace ITC.Embedded.Camera
 {
-    public delegate void CameraEventHandler(object sender, CameraEventArgs e);
+    public delegate void CameraEventHandler(object sender, CameraAssembly.CameraEventArgs e);
     interface ICameraAssembly
     {
         //event CameraEventHandler CameraEvent; //can not define this, implementation fails
         //event EventHandler CameraEvent; //also not OK as we need a CameraEventHandler
         void Disconnect();
-        void Connect(IntPtr handle, object o1, object o2);
+        //void Connect(IntPtr handle, object o1, object o2);
         void GetResolutionCount(out long lCount);
         void SetResolution(uint uIndex);
         void SetProperty(CameraProperty prop, int val, PropertyMode flags);

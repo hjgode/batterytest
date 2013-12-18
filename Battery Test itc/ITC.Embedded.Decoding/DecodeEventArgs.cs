@@ -5,14 +5,17 @@ using System.Text;
 
 namespace ITC.Embedded.Decoding
 {
-    public class DecodeEventArgs
+    public partial class DecodeAssembly : IBarcodeAssembly, IDisposable
     {
-        public int dummy = 0;
-        public string sData = "";
-        public DecodeEventArgs(string s)
+
+        public class DecodeEventArgs
         {
-            sData = s;
+            public int dummy = 0;
+            public string sData = "";
+            public DecodeEventArgs(string s)
+            {
+                sData = s;
+            }
         }
     }
-
 }

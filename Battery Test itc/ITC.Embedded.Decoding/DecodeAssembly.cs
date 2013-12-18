@@ -11,7 +11,7 @@ namespace ITC.Embedded.Decoding
     /// <summary>
     /// class to mimic honeywell barcode reading DecodeAssembly
     /// </summary>
-    public class DecodeAssembly : IBarcodeAssembly, IDisposable
+    public partial class DecodeAssembly : IBarcodeAssembly, IDisposable
     {
         /// <summary>
         /// event will be fired for scanned barcode or timeout

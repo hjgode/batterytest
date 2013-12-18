@@ -11,7 +11,26 @@ using Intermec.Multimedia;
 
 namespace ITC.Embedded.Camera
 {
-    public class CameraAssembly : Control, ICameraAssembly, IDisposable
+    /// <summary>
+    /// JPG image quality levels.  This also applies to TIF images.
+    /// </summary>
+    public enum JPGQuality
+    {
+        /// <summary>
+        /// Low quality: high amount of compression for JPG, large stroke widths and considerable background noise for TIF
+        /// </summary>
+        Low,
+        /// <summary>
+        /// Medium quality: moderate compression for JPG, medium stroke widths and moderate background noise for TIF
+        /// </summary>
+        Medium,
+        /// <summary>
+        /// High quality: low amount of compression for JPG, thin stroke widths and minimal background noise for TIF
+        /// </summary>
+        High
+    }
+
+    public partial class CameraAssembly : Control, ICameraAssembly, IDisposable
     {
         static Intermec.Multimedia.Camera cam;
         Intermec.Multimedia.Camera.Resolution currentRes;
@@ -63,11 +82,11 @@ namespace ITC.Embedded.Camera
         }
 
         //we cannt use this for intermec camera init with picturebox
-        public void Connect(IntPtr handle, object o1, object o2)
-        {
-            addLog("Connect with handle UNSUPPORTED");
-            cam = new Intermec.Multimedia.Camera(Intermec.Multimedia.Camera.ImageResolutionType.Medium);
-        }
+        //public void Connect(IntPtr handle, object o1, object o2)
+        //{
+        //    addLog("Connect with handle UNSUPPORTED");
+        //    cam = new Intermec.Multimedia.Camera(Intermec.Multimedia.Camera.ImageResolutionType.Medium);
+        //}
 
         Boolean startCAM()
         {
@@ -112,6 +131,8 @@ namespace ITC.Embedded.Camera
             {
                 addLog("stopCAM(): cam is not null");
                 StopPreview();
+                try { cam.SnapshotEvent -= cam_SnapshotEvent; }
+                catch (Exception) { }
                 //cam.Streaming = false;
                 //cam.PictureBoxUpdate = Camera.PictureBoxUpdateType.None;
             }
@@ -196,6 +217,38 @@ namespace ITC.Embedded.Camera
             addLog("Disconnect...");
             stopCAM();
             addLog("Disconnect done.");
+        }
+
+
+        public void SnapPicture(string sFilename, JPGQuality level)
+        {
+            cam.SnapshotEvent += new SnapshotEventHandler(cam_SnapshotEvent);
+            Intermec.Multimedia.Camera.ImageResolutionType res = Intermec.Multimedia.Camera.ImageResolutionType.Lowest;
+            switch (level)
+            {
+                case JPGQuality.Low:
+                    res = Intermec.Multimedia.Camera.ImageResolutionType.Lowest;
+                    break;
+                case JPGQuality.Medium:
+                    res = Intermec.Multimedia.Camera.ImageResolutionType.Medium;
+                    break;
+                case JPGQuality.High:
+                    res = Intermec.Multimedia.Camera.ImageResolutionType.Highest;
+                    break;
+            }
+            cam.Snapshot(res);
+            //CameraAPIResult cameraAPIResult = CameraOps.camSnapPicture(filename, (int)level);
+            //if (cameraAPIResult != CameraAPIResult.Success)
+            //{
+            //    throw new CameraException(cameraAPIResult);
+            //}
+        }
+
+        void cam_SnapshotEvent(object sender, Intermec.Multimedia.Camera.SnapshotArgs snArgs)
+        {
+            addLog("cam_SnapshotEvent: " + snArgs.Status.ToString() + "\n" + snArgs.Filename);
+            CameraEventArgs cea = new CameraEventArgs(CameraTaskCodes.ImageCaptureComplete);
+            doHandleEvent(cea);            
         }
 
         public void GetResolutionCount(out long resCount)
