@@ -7,6 +7,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CN51cam", "CN51cam\CN51cam.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trans-o-flex Battery Test", "Battery Test\Trans-o-flex Battery Test.csproj", "{871E4B5D-9AC4-4EF7-A3EE-21C07083A79C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ITC.Embedded.Camera", "Battery Test itc\ITC.Embedded.Camera\ITC.Embedded.Camera.csproj", "{15291054-B555-441D-B6C6-DBECD6B1D1FD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ITC.Embedded.Decoding", "Battery Test itc\ITC.Embedded.Decoding\ITC.Embedded.Decoding.csproj", "{A56C28CD-21DF-4D09-B31B-D24DFD52A655}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ITC.Embedded.Utility", "Battery Test itc\ITC.Embedded.Utility\ITC.Embedded.Utility.csproj", "{7DFF8E67-0A2F-409E-B9A9-B70094A24A59}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ITC.Embedded.WirelessAssembly", "Battery Test itc\ITC.Embedded.WirelessAssembly\ITC.Embedded.WirelessAssembly.csproj", "{1955A25F-89C0-481E-8AE2-BE811EB0280B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MS.Embedded.Wireless.Network", "Battery Test itc\MS.Wireless.Network\MS.Embedded.Wireless.Network.csproj", "{EC22D42E-E1B5-472D-9EF2-FACBF6275BAA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +37,26 @@ Global
 		{871E4B5D-9AC4-4EF7-A3EE-21C07083A79C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{871E4B5D-9AC4-4EF7-A3EE-21C07083A79C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{871E4B5D-9AC4-4EF7-A3EE-21C07083A79C}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{15291054-B555-441D-B6C6-DBECD6B1D1FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15291054-B555-441D-B6C6-DBECD6B1D1FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15291054-B555-441D-B6C6-DBECD6B1D1FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15291054-B555-441D-B6C6-DBECD6B1D1FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A56C28CD-21DF-4D09-B31B-D24DFD52A655}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A56C28CD-21DF-4D09-B31B-D24DFD52A655}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A56C28CD-21DF-4D09-B31B-D24DFD52A655}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A56C28CD-21DF-4D09-B31B-D24DFD52A655}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7DFF8E67-0A2F-409E-B9A9-B70094A24A59}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7DFF8E67-0A2F-409E-B9A9-B70094A24A59}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7DFF8E67-0A2F-409E-B9A9-B70094A24A59}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7DFF8E67-0A2F-409E-B9A9-B70094A24A59}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1955A25F-89C0-481E-8AE2-BE811EB0280B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1955A25F-89C0-481E-8AE2-BE811EB0280B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1955A25F-89C0-481E-8AE2-BE811EB0280B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1955A25F-89C0-481E-8AE2-BE811EB0280B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC22D42E-E1B5-472D-9EF2-FACBF6275BAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC22D42E-E1B5-472D-9EF2-FACBF6275BAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC22D42E-E1B5-472D-9EF2-FACBF6275BAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC22D42E-E1B5-472D-9EF2-FACBF6275BAA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
