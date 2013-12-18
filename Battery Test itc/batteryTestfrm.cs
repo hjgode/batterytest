@@ -13,6 +13,11 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
+/*
+ * system and drawing give strange compiler warnings
+Consider app.config remapping of assembly "System.Drawing, Culture=neutral, PublicKeyToken=969db8053d3322ac, Retargetable=Yes" from Version "1.0.5000.0" [] to Version "3.5.0.0" [C:\Program Files (x86)\Microsoft.NET\SDK\CompactFramework\v3.5\WindowsCE\System.Drawing.dll] to solve conflict and get rid of warning.
+Consider app.config remapping of assembly "System, Culture=neutral, PublicKeyToken=969db8053d3322ac, Retargetable=Yes" from Version "1.0.5000.0" [] to Version "3.5.0.0" [C:\Program Files (x86)\Microsoft.NET\SDK\CompactFramework\v3.5\WindowsCE\System.dll] to solve conflict and get rid of warning.
+*/
 using HANDLE = System.IntPtr;
 
 #if HSM
