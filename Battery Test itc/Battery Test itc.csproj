@@ -87,23 +87,23 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="ITC.Embedded.Camera\ITC.Embedded.Camera\ITC.Embedded.Camera.csproj">
+    <ProjectReference Include="ITC.Embedded.Camera\ITC.Embedded.Camera.csproj">
       <Project>{15291054-B555-441D-B6C6-DBECD6B1D1FD}</Project>
       <Name>ITC.Embedded.Camera</Name>
     </ProjectReference>
-    <ProjectReference Include="ITC.Embedded.Decoding\ITC.Embedded.Decoding\ITC.Embedded.Decoding.csproj">
+    <ProjectReference Include="ITC.Embedded.Decoding\ITC.Embedded.Decoding.csproj">
       <Project>{A56C28CD-21DF-4D09-B31B-D24DFD52A655}</Project>
       <Name>ITC.Embedded.Decoding</Name>
     </ProjectReference>
-    <ProjectReference Include="ITC.Embedded.Utility\ITC.Embedded.Utility\ITC.Embedded.Utility.csproj">
+    <ProjectReference Include="ITC.Embedded.Utility\ITC.Embedded.Utility.csproj">
       <Project>{7DFF8E67-0A2F-409E-B9A9-B70094A24A59}</Project>
       <Name>ITC.Embedded.Utility</Name>
     </ProjectReference>
-    <ProjectReference Include="ITC.Embedded.WirelessAssembly\ITC.Embedded.WirelessAssembly\ITC.Embedded.WirelessAssembly.csproj">
+    <ProjectReference Include="ITC.Embedded.WirelessAssembly\ITC.Embedded.WirelessAssembly.csproj">
       <Project>{1955A25F-89C0-481E-8AE2-BE811EB0280B}</Project>
       <Name>ITC.Embedded.WirelessAssembly</Name>
     </ProjectReference>
-    <ProjectReference Include="MS.Wireless.Network\MS.Wireless.Network\MS.Embedded.Wireless.Network.csproj">
+    <ProjectReference Include="MS.Wireless.Network\MS.Embedded.Wireless.Network.csproj">
       <Project>{EC22D42E-E1B5-472D-9EF2-FACBF6275BAA}</Project>
       <Name>MS.Embedded.Wireless.Network</Name>
     </ProjectReference>
