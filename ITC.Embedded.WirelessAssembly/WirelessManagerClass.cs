@@ -7,7 +7,7 @@ using Microsoft.WindowsMobile.Status;
 
 namespace ITC.Embedded.WirelessAssembly
 {
-    public class WirelessManager : IWirelessManager, IDisposable
+    public class WirelessManager : IDisposable
     {
         static bool m_wwan_state = false;
         static bool m_wlan_state = false;
