@@ -1,4 +1,7 @@
-﻿using System;
+﻿//use Build project property to define a symbol
+//HSM for HSM device
+//ITC for ITC device
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -30,7 +33,7 @@ using MS.Embedded.Wireless.Network;
 //using HSM.Embedded.WirelessAssembly;
 #endif
 
-namespace Trans_o_flex_Battery_Test
+namespace Battery_Test
 {
     public partial class Form1 : Form
     {

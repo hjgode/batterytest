@@ -56,32 +56,5 @@ namespace Battery_Test.Properties {
                 resourceCulture = value;
             }
         }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to ftp.
-        /// </summary>
-        internal static string FTPPass {
-            get {
-                return ResourceManager.GetString("FTPPass", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to 127.0.0.1.
-        /// </summary>
-        internal static string FTPServer {
-            get {
-                return ResourceManager.GetString("FTPServer", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to ftp.
-        /// </summary>
-        internal static string FTPUser {
-            get {
-                return ResourceManager.GetString("FTPUser", resourceCulture);
-            }
-        }
     }
 }

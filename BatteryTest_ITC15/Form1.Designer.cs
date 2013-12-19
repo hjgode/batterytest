@@ -1,4 +1,4 @@
-﻿namespace Trans_o_flex_Battery_Test
+﻿namespace Battery_Test
 {
     partial class Form1
     {
