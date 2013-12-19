@@ -37,6 +37,12 @@ namespace Battery_Test
 {
     public partial class Form1 : Form
     {
+        //these are the used interfaces, plus static methods!
+        private DecodeAssembly da = new DecodeAssembly();
+        private CameraAssembly ca = new CameraAssembly();
+        private WirelessManager wim = new WirelessManager();
+        private ConnMgr cmr = new ConnMgr();
+
         public Form1()
         {
             InitializeComponent();
@@ -168,11 +174,6 @@ namespace Battery_Test
         private string gps_location = string.Empty;
         private bool deviceInUnattended = false;
         private bool complained = false;
-
-        private DecodeAssembly da = new DecodeAssembly();
-        private CameraAssembly ca = new CameraAssembly();
-        private WirelessManager wim = new WirelessManager();
-        private ConnMgr cmr = new ConnMgr();
 
         public const int UNATTENDED_ON = 1;
         public const int POWER_FORCE = 0x1000;
