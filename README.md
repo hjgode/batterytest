@@ -1,6 +1,15 @@
 batterytest
 ===========
 
+== Compilation
+The solution has a separate project for HSM and ITC devices. There are conditional defines (HSM or ITC) in the project properties to compile with HSM or ITC runtimes/SDK.
+
+The code files of the HSM project are linked from the ITC project into the HSM project. So there is ONLY ONE CODE SOURCE for both projects.
+  
+-------------
+Description
+===========
+
 Test battery performance of windows mobile device
 
 This small Visual Studio 2008 Windows Mobile SDK C# SmartDevice app will show the battery performance running down when issuing different tasks on a device.
