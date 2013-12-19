@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<configuration>
-  <appSettings>
-    <add key="FTPServer" value="192.168.251.129" />
-    <add key="FTPUserName" value="ftp" />
-    <add key="FTPPassword" value="ftp" />
-  </appSettings>
-</configuration>
-
