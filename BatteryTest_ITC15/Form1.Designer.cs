@@ -215,7 +215,7 @@
             this.tabPageOutput.Controls.Add(this.buttonStop);
             this.tabPageOutput.Location = new System.Drawing.Point(0, 0);
             this.tabPageOutput.Name = "tabPageOutput";
-            this.tabPageOutput.Size = new System.Drawing.Size(240, 297);
+            this.tabPageOutput.Size = new System.Drawing.Size(232, 294);
             this.tabPageOutput.Text = "Output";
             // 
             // pictureBox1
@@ -408,7 +408,7 @@
             this.tabPageConfigBelade.Controls.Add(this.numericUpDownBeladeLaufzeitStunden);
             this.tabPageConfigBelade.Location = new System.Drawing.Point(0, 0);
             this.tabPageConfigBelade.Name = "tabPageConfigBelade";
-            this.tabPageConfigBelade.Size = new System.Drawing.Size(240, 297);
+            this.tabPageConfigBelade.Size = new System.Drawing.Size(232, 294);
             this.tabPageConfigBelade.Text = "Belade";
             // 
             // radioButtonBeladeGPRS
@@ -978,7 +978,7 @@
             this.tabPageConfigTour.Controls.Add(this.numericUpDownTourLaufzeitStunden);
             this.tabPageConfigTour.Location = new System.Drawing.Point(0, 0);
             this.tabPageConfigTour.Name = "tabPageConfigTour";
-            this.tabPageConfigTour.Size = new System.Drawing.Size(240, 297);
+            this.tabPageConfigTour.Size = new System.Drawing.Size(232, 294);
             this.tabPageConfigTour.Text = "Tour";
             this.tabPageConfigTour.Click += new System.EventHandler(this.tabPageConfigTour_Click);
             // 
@@ -1349,7 +1349,7 @@
             this.tabPageConfigRuhe.Controls.Add(this.checkBoxIncludeRuhePhase);
             this.tabPageConfigRuhe.Location = new System.Drawing.Point(0, 0);
             this.tabPageConfigRuhe.Name = "tabPageConfigRuhe";
-            this.tabPageConfigRuhe.Size = new System.Drawing.Size(240, 297);
+            this.tabPageConfigRuhe.Size = new System.Drawing.Size(232, 294);
             this.tabPageConfigRuhe.Text = "Ruhe";
             // 
             // radioButtonRuheUnattended
@@ -1460,7 +1460,7 @@
             this.Controls.Add(this.tabControl1);
             this.Menu = this.mainMenu1;
             this.Name = "Form1";
-            this.Text = "trans-o-flex";
+            this.Text = "Battery Test";
             this.Load += new System.EventHandler(this.Form1_Load);
             this.tabPageOutput.ResumeLayout(false);
             this.tabPageConfigBelade.ResumeLayout(false);
